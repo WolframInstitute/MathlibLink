@@ -5,8 +5,7 @@ description: Author and verify Markdown reference pages for implemented symbols 
 
 # Symbol reference pages
 
-Adapted from PureMath's wolfram-symbol-page and Ruliology's ruliology-symbol-page
-playbooks. Read the local GUIDE.md and the symbol's implementation and tests.
+Adapted from Ruliology's symbol-page playbook. Read the local GUIDE.md and the symbol's implementation and tests.
 
 Use docs/en/ReferencePages/Symbols/<Symbol>.md, Template: Symbol, the paclet
 context, and a flat Publisher/Paclet/ref/Symbol URI. Link it from its owning
@@ -39,8 +38,7 @@ Keep developer rationale in an annotation above Details & Options or in
 local design notes; keep observable behavior in the visible documentation.
 The project uses three scripts, so do not copy upstream lint/pod infrastructure.
 
-Sources: [PureMath](https://github.com/WolframInstitute/PureMath/blob/main/.agent-skills/wolfram-symbol-page/SKILL.md),
-[Ruliology](https://github.com/WolframInstitute/Ruliology/blob/main/.agent-skills/ruliology-symbol-page/SKILL.md),
+Sources: [Ruliology](https://github.com/WolframInstitute/Ruliology/blob/main/.agent-skills/ruliology-symbol-page/SKILL.md),
 [converter conventions](https://github.com/WolframInstitute/MarkdownToNotebook/blob/main/docs/doc-pages.md).
 
 Apply [wolfram-example-style](../wolfram-example-style/SKILL.md) to every

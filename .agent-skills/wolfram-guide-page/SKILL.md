@@ -5,7 +5,7 @@ description: Create or revise a paclet guide with coherent topic organization, r
 
 # Guide pages
 
-Adapted from PureMath's wolfram-guide-page and Ruliology's guide conventions.
+Adapted from Ruliology's guide conventions.
 Use Template: Guide under docs/en/Guides, with Name, Title, Description,
 Context, Paclet, URI, Keywords and applicable related-page metadata.
 
@@ -25,8 +25,7 @@ Build with `make notebooks`, inspect the resulting guide and its links, and
 run `make check-publish` for release validation. See the local symbol-page
 skill and GUIDE.md for shared formatting and example rules.
 
-Sources: [PureMath](https://github.com/WolframInstitute/PureMath/blob/main/.agent-skills/wolfram-guide-page/SKILL.md),
-[Ruliology](https://github.com/WolframInstitute/Ruliology/blob/main/GUIDE.md).
+Sources: [Ruliology](https://github.com/WolframInstitute/Ruliology/blob/main/GUIDE.md).
 
 Apply [wolfram-example-style](../wolfram-example-style/SKILL.md) to every
 example, including notebook companions. It overrides older styling advice.

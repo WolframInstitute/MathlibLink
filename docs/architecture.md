@@ -3,7 +3,7 @@
 MathlibLink connects Wolfram Language to the complete declaration namespace
 of a pinned mathlib release. It follows PARILink's explicit sessions,
 structured arguments, retained objects and error handling. It is independent
-of Recursor, PureMath and other consumers.
+of the applications that use it.
 
 LeanLink supplies the native Lean environment, elaboration, evaluation and
 kernel-checking operations. MathlibLink supplies a reproducible mathlib setup,

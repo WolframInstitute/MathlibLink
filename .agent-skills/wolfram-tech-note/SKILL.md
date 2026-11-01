@@ -5,7 +5,7 @@ description: Write and verify a worked Markdown tutorial with executable computa
 
 # Worked tutorials
 
-Adapted from PureMath's wolfram-tech-note and Ruliology's ruliology-tech-note.
+Adapted from Ruliology's tutorial conventions.
 Use Template: TechNote in docs/en/Tutorials, a readable Title, the paclet
 context and tutorial URI. Add reciprocal links in related guides and tutorials.
 
@@ -35,8 +35,7 @@ The upstream remote-pod restrictions are deployment-specific and are not
 adopted here. Local builds use the three existing scripts. Creating a tutorial
 does not itself publish it; `make publish` is the explicit cloud release step.
 
-Sources: [PureMath](https://github.com/WolframInstitute/PureMath/blob/main/.agent-skills/wolfram-tech-note/SKILL.md),
-[Ruliology](https://github.com/WolframInstitute/Ruliology/blob/main/.agent-skills/ruliology-tech-note/SKILL.md).
+Sources: [Ruliology](https://github.com/WolframInstitute/Ruliology/blob/main/.agent-skills/ruliology-tech-note/SKILL.md).
 
 Apply [wolfram-example-style](../wolfram-example-style/SKILL.md) to every
 example, including notebook companions. It overrides older styling advice.
