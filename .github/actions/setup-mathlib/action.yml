@@ -41,18 +41,17 @@ runs:
       run: |
         Join-Path $env:MSYS_DIRECTORY 'usr\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: Install pinned Wolfram for macOS
-      if: runner.os == 'macOS'
+    - name: Download the pinned native Wolfram installer
+      if: runner.os != 'Linux'
       shell: bash
       run: |
-        installer="$RUNNER_TEMP/Wolfram.dmg"
-        mount="$RUNNER_TEMP/wolfram-volume"
-        app="$RUNNER_TEMP/Wolfram.app"
-        metadata="$RUNNER_TEMP/wolfram-download-center.html"
-        curl --http1.1 --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 60 \
-          --header 'Cache-Control: no-cache' --output "$metadata" https://www.wolfram.com/download-center/
-        url="$(python3 - "$metadata" <<'PY'
-        import sys
+        if [ "$RUNNER_OS" = macOS ]; then
+          curl --http1.1 --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 60 \
+            --header 'Cache-Control: no-cache' --output "$RUNNER_TEMP/wolfram-download-center.html" https://www.wolfram.com/download-center/
+        fi
+        python - <<'PY'
+        import hashlib, os, re, shutil, subprocess, tempfile
+        from concurrent.futures import ThreadPoolExecutor
         from html.parser import HTMLParser
         from pathlib import Path
         from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
@@ -74,23 +73,73 @@ runs:
                     query["downloadManager"] = ["false"]
                     self.links.add(urlunsplit((link.scheme, link.netloc, link.path, urlencode(query, doseq=True), "")))
 
-        parser = DownloadLinks()
-        parser.feed(Path(sys.argv[1]).read_text(encoding="utf-8"))
-        if len(parser.links) != 1:
-            raise SystemExit("The official Download Center must provide one Wolfram 15.0.1 Mac link; review the pinned installer before updating it.")
-        print(parser.links.pop())
+        root = Path(os.environ["RUNNER_TEMP"])
+        if os.environ["RUNNER_OS"] == "macOS":
+            metadata = root / "wolfram-download-center.html"
+            parser = DownloadLinks()
+            parser.feed(metadata.read_text(encoding="utf-8"))
+            metadata.unlink()
+            if len(parser.links) != 1:
+                raise SystemExit("The official Download Center must provide one Wolfram 15.0.1 Mac link; review the pinned installer before updating it.")
+            url = parser.links.pop()
+            filename, total = "Wolfram.dmg", 3635890238
+            expected = "1bb9130ca53e6798eb897336da28336e6ea3bc3ae2860e17ee97e0f9cdd46204"
+        elif os.environ["RUNNER_OS"] == "Windows":
+            url = "https://files.wolframcdn.com/packages/winget/15.0.0.0/WolframEngine_15.0.0_WIN.zip"
+            filename, total = "WolframEngine.zip", 3063249725
+            expected = "357ce8157a065355c113dbf50a9ac86a12f51e5ce63eefd1e9c541be05d026f4"
+        else:
+            raise SystemExit("Unsupported native installer platform.")
+
+        # The CDN can truncate open-ended transfers. Validate bounded ranges,
+        # then verify the complete official archive before exposing it.
+        chunk = 64 * 1024 * 1024
+        with tempfile.TemporaryDirectory(prefix="wolfram-parts-", dir=root) as temporary:
+            parts = Path(temporary)
+
+            def download(index):
+                start, end = index * chunk, min(total, (index + 1) * chunk) - 1
+                size = end - start + 1
+                output, headers = parts / f"{index}.part", parts / f"{index}.headers"
+                subprocess.run([
+                    "curl", "--silent", "--show-error", "--http1.1", "--fail", "--location",
+                    "--range", f"{start}-{end}", "--max-filesize", str(size),
+                    "--connect-timeout", "30", "--max-time", "120",
+                    "--retry", "3", "--retry-delay", "1", "--retry-all-errors",
+                    "--dump-header", str(headers), "--output", str(output), url
+                ], check=True, timeout=510)
+                ranges = re.findall(r"^Content-Range:\s*(.+)$", headers.read_text(), re.I | re.M)
+                if output.stat().st_size != size or not ranges or ranges[-1].strip() != f"bytes {start}-{end}/{total}":
+                    raise RuntimeError(f"Invalid installer range {start}-{end}.")
+                print(f"Verified installer range {start}-{end}.", flush=True)
+                return output
+
+            pool = ThreadPoolExecutor(max_workers=4)
+            try:
+                ordered = list(pool.map(download, range((total + chunk - 1) // chunk)))
+            finally:
+                pool.shutdown(wait=True, cancel_futures=True)
+            archive = parts / filename
+            with archive.open("wb") as target:
+                for part in ordered:
+                    with part.open("rb") as source:
+                        shutil.copyfileobj(source, target)
+                    part.unlink()
+            with archive.open("rb") as source:
+                digest = hashlib.file_digest(source, "sha256").hexdigest()
+            if digest != expected:
+                raise RuntimeError("Wolfram installer checksum mismatch.")
+            archive.replace(root / filename)
+        print(f"Verified {filename}: {digest}", flush=True)
         PY
-        )"
-        rm "$metadata"
-        for attempt in 1 2 3 4; do
-          if curl --http1.1 --fail --location --continue-at - --connect-timeout 30 --max-time 600 --output "$installer" \
-            "$url"; then
-            break
-          fi
-          if [ "$attempt" -eq 4 ]; then exit 1; fi
-          sleep "$attempt"
-        done
-        echo "1bb9130ca53e6798eb897336da28336e6ea3bc3ae2860e17ee97e0f9cdd46204  $installer" | shasum -a 256 --check
+
+    - name: Install pinned Wolfram for macOS
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        installer="$RUNNER_TEMP/Wolfram.dmg"
+        mount="$RUNNER_TEMP/wolfram-volume"
+        app="$RUNNER_TEMP/Wolfram.app"
         mkdir -p "$mount"
         hdiutil attach -readonly -nobrowse -mountpoint "$mount" "$installer"
         trap 'hdiutil detach "$mount" >/dev/null' EXIT
@@ -105,21 +154,6 @@ runs:
         echo "$launcher" >> "$GITHUB_PATH"
         echo "WOLFRAMSCRIPT_KERNELPATH=$kernel" >> "$GITHUB_ENV"
         rm "$installer"
-
-    - name: Download pinned Wolfram Engine for Windows
-      if: runner.os == 'Windows'
-      shell: bash
-      run: |
-        installer="$RUNNER_TEMP/WolframEngine.zip"
-        for attempt in 1 2 3 4; do
-          if curl --http1.1 --fail --location --continue-at - --connect-timeout 30 --max-time 600 --output "$installer" \
-            'https://files.wolframcdn.com/packages/winget/15.0.0.0/WolframEngine_15.0.0_WIN.zip'; then
-            break
-          fi
-          if [ "$attempt" -eq 4 ]; then exit 1; fi
-          sleep "$attempt"
-        done
-        echo "357ce8157a065355c113dbf50a9ac86a12f51e5ce63eefd1e9c541be05d026f4  $installer" | sha256sum -c
 
     - name: Install pinned Wolfram Engine for Windows
       if: runner.os == 'Windows'

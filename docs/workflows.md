@@ -42,9 +42,15 @@ checks its version and Wolfram Research's Apple Developer ID signature before us
 the bundled command-line executables. The app stays in the runner's temporary
 directory. Windows uses the URL, checksum and silent installation switches in
 [Microsoft's WinGet manifest](https://github.com/microsoft/winget-pkgs/blob/master/manifests/w/WolframResearch/WolframEngine/15.0.0/WolframResearch.WolframEngine.installer.yaml).
-Installer transfers use bounded retries and resume partial downloads.
+Installer downloads use bounded byte ranges with limited retries. Every range
+is checked for its expected position and length, then the assembled archive
+must match its pinned SHA-256 before installation.
 Python and GNU make are prepared automatically, and `InstallMathlib[]`
 prepares the pinned local Lean, LeanLink and mathlib runtime.
+
+Full-import integration checks use an unlimited computation budget inside the
+job's overall timeout. This accommodates the slower hosted macOS runner without
+changing public defaults. Separate tests enforce explicit short time limits.
 
 PacletPage building and publishing run in the Linux container with its front
 end configured for offscreen rendering. Documentation tools are fetched from
