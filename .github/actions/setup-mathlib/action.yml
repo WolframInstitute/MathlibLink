@@ -1,5 +1,5 @@
 name: Prepare MathlibLink
-description: Require a licensed native Wolfram 15 runner and install the pinned local runtime.
+description: Check native Wolfram 15 with an entitlement or existing license and install the pinned runtime.
 inputs:
   system:
     description: Expected Wolfram SystemID.
@@ -7,6 +7,9 @@ inputs:
   documentation:
     description: Require the pinned PacletPage builder and a working front end.
     default: 'false'
+  entitlement:
+    description: Optional on-demand license entitlement; otherwise use the runner license.
+    default: ''
 runs:
   using: composite
   steps:
@@ -15,11 +18,20 @@ runs:
       env:
         MATHLIBLINK_SYSTEM: ${{ inputs.system }}
         MATHLIBLINK_DOCUMENTATION: ${{ inputs.documentation }}
+        MATHLIBLINK_ENTITLEMENT: ${{ inputs.entitlement }}
       run: |
         for tool in git make python3 wolframscript; do
           command -v "$tool" >/dev/null || { echo "::error::Required runner tool is missing: $tool"; exit 1; }
         done
         python3 -c 'import sys; assert sys.version_info >= (3, 12), "Python 3.12 or later is required"'
+        if [ -z "$MATHLIBLINK_ENTITLEMENT" ]; then
+          echo 'Using the runner license; an optional WOLFRAMSCRIPT_ENTITLEMENTID secret can license this job.'
+        else
+          [[ "$MATHLIBLINK_ENTITLEMENT" != *$'\n'* && "$MATHLIBLINK_ENTITLEMENT" != *$'\r'* ]] || { echo '::error::The entitlement ID must be one line.'; exit 1; }
+          export WOLFRAMSCRIPT_ENTITLEMENTID="$MATHLIBLINK_ENTITLEMENT"
+          printf 'WOLFRAMSCRIPT_ENTITLEMENTID=%s\n' "$WOLFRAMSCRIPT_ENTITLEMENTID" >> "$GITHUB_ENV"
+          echo 'Using the configured on-demand entitlement.'
+        fi
         # Wolfram symbols must reach the kernel literally.
         # shellcheck disable=SC2016
         wolframscript -code '
