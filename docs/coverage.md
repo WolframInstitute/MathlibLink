@@ -47,8 +47,10 @@ The 22 integration checks cover:
 
 The separate local tests cover installation metadata, exact argument encoding,
 option validation, unavailable objects, closure, interruption and timeout paths.
-All 57 local tests pass, including rejection of modified tracked mathlib sources,
-preserved caller contexts and selection of private curl ahead of an older system copy.
+All 58 local tests pass, including rejection of modified tracked mathlib sources,
+preserved caller contexts and selection of private or existing curl ahead of an
+older copy beside Git. The 22 live checks were repeated successfully after the
+automatic curl bootstrap was added.
 The maintained commands are `make check`, `make test` and `make test-mathlib`.
 Raw reports and experiment logs are generated under ignored `build/`.
 
@@ -118,6 +120,11 @@ their authored input expressions and expected output counts, with no message
 cells or Code-style cells. Fresh metadata includes the executable paths;
 cancellation gives its expected diagnostic. The refreshed tutorial's integer
 square root and binomial row were checked exactly.
+
+After curl setup was added, the same three pages were rebuilt with all 20
+inputs freshly evaluated. The other 13 pages retained their audited outputs
+only after unchanged-source, exact-input and output-count checks. The updated
+installation metadata includes Curl and passed light and dark rendering checks.
 
 Nine computed figures and the session/object displays were rendered and
 inspected in light and dark appearances. The refreshed setup metadata and

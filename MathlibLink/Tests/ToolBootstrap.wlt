@@ -96,23 +96,29 @@ VerificationTest[
 	}, {True, False, False}, TestID -> "curl-must-support-cache-options-and-https"
 ]
 
-VerificationTest[
-	Module[{temporary = CreateDirectory[], system, managed, suffix, environment, directories, resolved},
+toolPathResolutionFixture[privateQ_] :=
+	Module[{temporary = CreateDirectory[], system, selected, suffix, environment, directories, resolved},
 		system = CreateDirectory[FileNameJoin[{temporary, "system"}]];
-		managed = CreateDirectory[FileNameJoin[{temporary, "managed-curl"}]];
+		selected = CreateDirectory[FileNameJoin[{temporary, "selected-curl"}]];
 		suffix = If[$OperatingSystem === "Windows", ".exe", ""];
-		Scan[CreateFile, {FileNameJoin[{system, "git" <> suffix}], FileNameJoin[{system, "curl" <> suffix}], FileNameJoin[{managed, "curl" <> suffix}]}];
+		Scan[CreateFile, {FileNameJoin[{system, "git" <> suffix}], FileNameJoin[{system, "curl" <> suffix}], FileNameJoin[{selected, "curl" <> suffix}]}];
 		WithCleanup[
 			environment = Block[{
-				WolframInstitute`MathlibLink`PackageScope`mathlibExecutables = (<|"Git" -> FileNameJoin[{system, "git" <> suffix}], "Curl" -> FileNameJoin[{managed, "curl" <> suffix}]|> &),
-				WolframInstitute`MathlibLink`PackageScope`mathlibToolPathDirectories = ({managed} &)
+				WolframInstitute`MathlibLink`PackageScope`mathlibExecutables = (<|"Git" -> FileNameJoin[{system, "git" <> suffix}], "Curl" -> FileNameJoin[{selected, "curl" <> suffix}]|> &),
+				WolframInstitute`MathlibLink`PackageScope`mathlibToolPathDirectories = (If[privateQ, {selected}, {}] &)
 			}, WolframInstitute`MathlibLink`PackageScope`mathlibEnvironment[]];
 			directories = StringSplit[environment["PATH"], If[$OperatingSystem === "Windows", ";", ":"]];
 			resolved = Function[name, SelectFirst[FileNameJoin[{#, name <> suffix}] & /@ directories, FileExistsQ]] /@ {"git", "curl"};
-			resolved === {FileNameJoin[{system, "git" <> suffix}], FileNameJoin[{managed, "curl" <> suffix}]},
+			resolved === {FileNameJoin[{system, "git" <> suffix}], FileNameJoin[{selected, "curl" <> suffix}]},
 			DeleteDirectory[temporary, DeleteContents -> True]
 		]
-	], True, TestID -> "child-path-uses-private-curl-before-older-curl-beside-working-git"
+]
+
+VerificationTest[toolPathResolutionFixture[True], True,
+	TestID -> "child-path-uses-private-curl-before-older-curl-beside-working-git"
+]
+VerificationTest[toolPathResolutionFixture[False], True,
+	TestID -> "child-path-preserves-existing-curl-selection-beside-working-git"
 ]
 
 VerificationTest[

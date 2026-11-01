@@ -39,10 +39,10 @@ mathlibExecutable[name_String] := With[{suffix = If[$OperatingSystem === "Window
 ]
 
 mathlibExecutables[] := AssociationThread[{"Elan", "Lake", "Git", "Curl"}, mathlibExecutable /@ {"elan", "lake", "git", "curl"}]
-mathlibPathDirectories[] := DeleteDuplicates[Join[
+mathlibPathDirectories[] := With[{executables = mathlibExecutables[]}, DeleteDuplicates[Join[
 	Replace[mathlibToolPathDirectories[], Except[_List] -> {}],
-	DirectoryName /@ Select[Values[mathlibExecutables[]], StringQ]
-]]
+	DirectoryName /@ Select[Prepend[Values[executables], Lookup[executables, "Curl", None]], StringQ]
+]]]
 mathlibEnvironment[extra_Association : <||>] := Association[GetEnvironment[],
 	"PATH" -> StringRiffle[DeleteDuplicates[Join[mathlibPathDirectories[],
 		StringSplit[Replace[Environment["PATH"], Except[_String] -> ""], If[$OperatingSystem === "Windows", ";", ":"]]]], If[$OperatingSystem === "Windows", ";", ":"]],
