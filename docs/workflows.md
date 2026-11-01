@@ -101,7 +101,8 @@ unchanged. The three native platform tests still run in full.
 
 ## Release an archive
 
-1. Merge the version change into `main` and wait for all CI jobs to pass.
+1. Merge the version change and `docs/releases/X.Y.Z.md` release notes into
+   `main`, then wait for all CI jobs to pass.
 2. Create `vX.Y.Z` at that exact commit, matching `MathlibLink/PacletInfo.wl`.
 3. The Release workflow downloads that commit's `MathlibLink-verified` artifact
    and verifies its commit, version, CI run and SHA-256 digests.
@@ -109,6 +110,7 @@ unchanged. The three native platform tests still run in full.
 The GitHub release contains the `.paclet`, `SHA256SUMS`, `build.json` provenance
 and `pacletpage-build.tar.gz` for publishing the already-built documentation.
 It starts as a draft and becomes public only after all assets are attached.
+A release uses the notes from its verified commit.
 A retry accepts identical assets and refuses to overwrite changed ones.
 The workflow uses its job-scoped GitHub token; no personal access token is
 needed. CI artifacts expire after 30 days, so create the release within that
