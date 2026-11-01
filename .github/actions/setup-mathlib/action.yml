@@ -48,9 +48,43 @@ runs:
         installer="$RUNNER_TEMP/Wolfram.dmg"
         mount="$RUNNER_TEMP/wolfram-volume"
         app="$RUNNER_TEMP/Wolfram.app"
+        metadata="$RUNNER_TEMP/wolfram-download-center.html"
+        curl --http1.1 --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 60 \
+          --header 'Cache-Control: no-cache' --output "$metadata" https://www.wolfram.com/download-center/
+        url="$(python3 - "$metadata" <<'PY'
+        import sys
+        from html.parser import HTMLParser
+        from pathlib import Path
+        from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
+
+        class DownloadLinks(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.links = set()
+
+            def handle_starttag(self, tag, attributes):
+                if tag != "a":
+                    return
+                link = urlsplit(dict(attributes).get("href", ""))
+                if (link.scheme, link.netloc, link.path) != ("https", "account.wolfram.com", "/dl/WolframApp"):
+                    return
+                query = parse_qs(link.query)
+                expected = {"version": ["15.0.1"], "platform": ["Mac"], "includesDocumentation": ["false"]}
+                if all(query.get(key) == value for key, value in expected.items()) and len(query.get("signature", [])) == 1:
+                    query["downloadManager"] = ["false"]
+                    self.links.add(urlunsplit((link.scheme, link.netloc, link.path, urlencode(query, doseq=True), "")))
+
+        parser = DownloadLinks()
+        parser.feed(Path(sys.argv[1]).read_text(encoding="utf-8"))
+        if len(parser.links) != 1:
+            raise SystemExit("The official Download Center must provide one Wolfram 15.0.1 Mac link; review the pinned installer before updating it.")
+        print(parser.links.pop())
+        PY
+        )"
+        rm "$metadata"
         for attempt in 1 2 3 4; do
           if curl --http1.1 --fail --location --continue-at - --connect-timeout 30 --max-time 600 --output "$installer" \
-            'https://account.wolfram.com/dl/WolframApp?version=15.0.1&platform=Mac&includesDocumentation=false&signature=09d7f5942c445782756030c9300d6386f8265c6910537efd11672b0a2b38d638bf4b845786832252bbd5eca6ef9bb82510dd952edafc424eaaab4d58&downloadManager=false'; then
+            "$url"; then
             break
           fi
           if [ "$attempt" -eq 4 ]; then exit 1; fi

@@ -35,8 +35,10 @@ it does not substitute another platform or skip unavailable tests.
 
 The macOS image comes from the public
 [Wolfram Download Center](https://www.wolfram.com/download-center/).
-Its SHA-256 is pinned from the official download; the setup action also checks
-its version and Wolfram Research's Apple Developer ID signature before using
+The setup action resolves its generated public link afresh and requires the
+exact pinned version; it does not store a download signature or use account
+credentials. Its SHA-256 is pinned from the official download; the action also
+checks its version and Wolfram Research's Apple Developer ID signature before using
 the bundled command-line executables. The app stays in the runner's temporary
 directory. Windows uses the URL, checksum and silent installation switches in
 [Microsoft's WinGet manifest](https://github.com/microsoft/winget-pkgs/blob/master/manifests/w/WolframResearch/WolframEngine/15.0.0/WolframResearch.WolframEngine.installer.yaml).
