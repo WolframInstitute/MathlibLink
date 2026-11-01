@@ -1,0 +1,8 @@
+{
+  "LeanToolchain": "leanprover/lean4:v4.35.0",
+  "MathlibRevision": "56a005855ea17e0b0958f73ec801ae140b0a1679",
+  "MathlibRepository": "https://github.com/leanprover-community/mathlib4.git",
+  "LeanLinkMinimumVersion": "1.2.5",
+  "LeanLinkArchive": "https://www.wolframcloud.com/obj/wolframinstitute/Resources/49e/49e8aa40-9838-4632-a71f-7a9e5aa43f48/download/1-2-5/PacletArchive.paclet",
+  "DocumentationURL": "https://leanprover-community.github.io/mathlib4_docs/"
+}
