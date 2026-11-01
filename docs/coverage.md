@@ -134,4 +134,5 @@ memory retained in compressed or swapped native allocations.
 
 Source hashes, actual outputs, notebook audits, renders and memory samples are
 retained under ignored `build/`. The [CI workflow](workflows.md) checks the
-native platforms and the installed release archive separately.
+native Lean runtime on all three platforms and the Wolfram interface and
+installed release archive in Linux.

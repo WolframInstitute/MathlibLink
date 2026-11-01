@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/WolframInstitute/MathlibLink/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WolframInstitute/MathlibLink/actions/workflows/ci.yml)
 [![Release](https://github.com/WolframInstitute/MathlibLink/actions/workflows/release.yml/badge.svg)](https://github.com/WolframInstitute/MathlibLink/actions/workflows/release.yml)
-[![Publish](https://github.com/WolframInstitute/MathlibLink/actions/workflows/publish.yml/badge.svg)](https://github.com/WolframInstitute/MathlibLink/actions/workflows/publish.yml)
 
 MathlibLink connects Wolfram Language to [mathlib](https://leanprover-community.github.io/mathlib4_docs/),
 Lean's mathematics library. It provides declaration lookup, typed objects,

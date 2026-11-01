@@ -9,52 +9,42 @@ run on the user's machine.
 
 | Workflow | Trigger | Required result |
 | --- | --- | --- |
-| [Repository checks](../.github/workflows/pull-request.yml) | Pull requests; called by CI | Whitespace, JSON manifests and pinned actionlint checks on a GitHub-hosted runner |
-| [CI](../.github/workflows/ci.yml) | Push to `main`; manual dispatch from `main` | Source checks, local tests and live mathlib tests on all three platforms; PacletPage build; installed-archive smoke tests on all three platforms |
-| [Release](../.github/workflows/release.yml) | `vX.Y.Z` tag; manual retry from `main` | Matching version, commit on `main`, successful CI for that exact commit and verified artifact checksums |
-| [Publish](../.github/workflows/publish.yml) | Manual dispatch from `main`, with a release tag | Verified GitHub release, publication of the same archive with PacletPage and a successful site check |
+| [Repository checks](../.github/workflows/pull-request.yml) | Pull requests; called by CI | Whitespace, JSON manifests and pinned actionlint checks |
+| [CI](../.github/workflows/ci.yml) | Push to `main`; manual dispatch from `main` | Native Lean/mathlib checks on three platforms; complete Wolfram tests, documentation, archive and installed-paclet checks in Linux |
+| [Release](../.github/workflows/release.yml) | `vX.Y.Z` tag; manual retry from `main` | Successful CI for the exact commit, publication through PacletPage, then GitHub release assets |
 
-Repository checks do not execute Wolfram tests. The CI badge reports the full
-native matrix. Missing licenses, tools, runtime downloads or failed tests fail
-their jobs. The workflows install their tools on GitHub-hosted runners; no
-custom runner registration is required.
+The pipeline follows [PARILink](https://github.com/WolframInstitute/PARILink/blob/main/.github/workflows/ci.yml):
+external runtimes are checked on their native platforms; Wolfram tests,
+documentation and packaging use the official Linux Wolfram Engine container.
+No desktop Wolfram installer is downloaded by CI.
 
-## Hosted runners
+## Hosted checks
 
-| Target | GitHub runner | Wolfram installation |
+| Check | Runner | Coverage |
 | --- | --- | --- |
-| Linux x86-64 | `ubuntu-24.04` | Official `wolframresearch/wolframengine:15.0` container, pinned by digest |
-| Windows x86-64 | `windows-2025` | Wolfram's 15.0.0 installer, pinned by SHA-256 |
-| macOS ARM64 | `macos-15` | Wolfram's 15.0.1 desktop image, pinned by SHA-256 |
+| Native Lean and mathlib | `ubuntu-24.04`, `windows-2025`, `macos-15` | Pinned toolchain and mathlib revision; exact computations and checked proofs |
+| Wolfram interface and paclet | `ubuntu-24.04`, official Wolfram Engine 15.0 container | Source and local tests; all live bridge tests; documentation; archive installation and public-interface checks |
 
-All three run the complete source, local and live mathlib checks, followed by
-smoke tests of the installed release archive. Windows and macOS execute native
-Wolfram kernels. Linux uses the official engine container, as PARILink and
-Ruliology do. The setup action checks the actual Wolfram version and system ID;
-it does not substitute another platform or skip unavailable tests.
+The native jobs use the same runtime manifest as `InstallMathlib[]`. They
+verify the elan archive checksum, cache the pinned Lean toolchain, preserve
+mathlib's dependency manifest, and compile
+[Runtime.lean](../MathlibLink/Tests/Runtime.lean) with warnings treated as errors.
+Mathlib supplies its compiled module cache. These jobs exercise the external
+runtime directly; they do not claim Wolfram bridge coverage on Windows or macOS.
 
-The macOS image comes from the public
-[Wolfram Download Center](https://www.wolfram.com/download-center/).
-The setup action resolves its generated public link afresh and requires the
-exact pinned version; it does not store a download signature or use account
-credentials. Its SHA-256 is pinned from the official download; the action also
-checks its version and Wolfram Research's Apple Developer ID signature before using
-the bundled command-line executables. The app stays in the runner's temporary
-directory. Windows uses the URL, checksum and silent installation switches in
-[Microsoft's WinGet manifest](https://github.com/microsoft/winget-pkgs/blob/master/manifests/w/WolframResearch/WolframEngine/15.0.0/WolframResearch.WolframEngine.installer.yaml).
-Installer downloads use bounded byte ranges with limited retries. Every range
-is checked for its expected position and length, then the assembled archive
-must match its pinned SHA-256 before installation.
-Python and GNU make are prepared automatically, and `InstallMathlib[]`
-prepares the pinned local Lean, LeanLink and mathlib runtime.
+The Linux Wolfram job exercises the actual installer and LeanLink bridge.
+Independent live-test phases and documentation pages run in fresh kernels to
+release native imports. Full-import correctness checks use an unlimited
+computation budget inside the job timeout; separate tests enforce short time
+limits. The installed-paclet check confirms that the public interface loads
+from the archive and verifies computation, proof checking and admission rejection.
 
-Full-import integration checks use an unlimited computation budget inside the
-job's overall timeout. This accommodates the slower hosted macOS runner without
-changing public defaults. Separate tests enforce explicit short time limits.
+PacletPage builds and checks the documentation and archive, then a clean-checkout
+dry run verifies that publication can reuse the same archive. The CI badge
+covers both native runtime jobs and the complete Wolfram job. Any failed job
+blocks release.
 
-PacletPage building and publishing run in the Linux container with its front
-end configured for offscreen rendering. Documentation tools are fetched from
-fixed source commits and installed within the job:
+Documentation tools are fetched from fixed source commits:
 
 | Tool | Pinned source |
 | --- | --- |
@@ -62,10 +52,9 @@ fixed source commits and installed within the job:
 | MarkdownToNotebook | [c2b5703c](https://github.com/WolframInstitute/MarkdownToNotebook/commit/c2b5703cc813ef620dd744fca82353bfbfb6ca6f) |
 | WolframParser | [0697ceb7](https://github.com/sw1sh/WolframParser/commit/0697ceb787111be04f0d9f043d7674ee146c76c2) |
 
-Public pull requests run only repository checks, with read-only tokens and no
-secrets. Wolfram jobs and manual publishing require `main`. Keep this separation
-when changing the workflows; see GitHub's
-[secure use guidance](https://docs.github.com/en/actions/reference/security/secure-use).
+Public pull requests run repository checks with read-only tokens and no secrets.
+Wolfram CI and release dispatches require `main`. No custom runner registration
+or separate GitHub publishing environment is required.
 
 ## License and credentials
 
@@ -99,53 +88,43 @@ under `WolframInstitute`; `WOLFRAM_CLOUD_PASSWORD` is that account's password.
 Authenticate the GitHub CLI with `gh auth login` first if needed. No separate
 GitHub environment is required.
 
-The hosted workflows require the entitlement secret and fail before installing
-Wolfram if it is missing. Local `make` commands can still use an existing
+The Wolfram container jobs require the entitlement secret and fail before running
+the kernel if it is missing. Native Lean runtime jobs do not need a Wolfram license. Local `make` commands can still use an existing
 license. [WolframScript](https://reference.wolfram.com/language/ref/program/wolframscript.html)
-uses the entitlement to license each native kernel. As in PARILink and Ruliology, `scripts/docs.wls`
+uses the entitlement to license each container kernel. As in PARILink and Ruliology, `scripts/docs.wls`
 routes PacletPage's fresh `WolframKernel -script` processes through
 `wolframscript`, retaining the selected kernel executable and process options.
 The scoped adapter recognizes Linux/macOS executable paths and Windows `.exe`
 paths, including spaces. Other subprocesses and the package runtime are
-unchanged. The three native platform tests still run in full.
+unchanged.
 
-## Release an archive
+## Release and publish
 
 1. Merge the version change and `docs/releases/X.Y.Z.md` release notes into
-   `main`, then wait for all CI jobs to pass.
+   `main`, then wait for every CI job to pass.
 2. Create `vX.Y.Z` at that exact commit, matching `MathlibLink/PacletInfo.wl`.
-3. The Release workflow downloads that commit's `MathlibLink-verified` artifact
-   and verifies its commit, version, CI run and SHA-256 digests.
+3. The Release workflow verifies the tag and successful CI, publishes the
+   verified archive through PacletPage, then creates the GitHub release.
+
+This is one release pipeline, following
+[PARILink's release workflow](https://github.com/WolframInstitute/PARILink/blob/main/.github/workflows/release.yml).
+A matching tag publishes both the Wolfram Cloud resource/documentation and
+GitHub assets. To retry an existing tag, dispatch **Release** from `main`.
+
+The workflow downloads that commit's `MathlibLink-verified` artifact, checks
+its provenance and SHA-256 digests, and restores its PacletPage build.
+`scripts/docs.wls publish` checks the restored archive, uses PacletPage with
+both build stages disabled, then requires successful deployment and site checks.
+Cloud credentials are supplied only to that publishing step. Publication does
+not submit to the Wolfram Paclet Repository.
 
 The GitHub release contains the `.paclet`, `SHA256SUMS`, `build.json` provenance
-and `pacletpage-build.tar.gz` for publishing the already-built documentation.
-It starts as a draft and becomes public only after all assets are attached.
-A release uses the notes from its verified commit.
-A retry accepts identical assets and refuses to overwrite changed ones.
-The workflow uses its job-scoped GitHub token; no personal access token is
-needed. CI artifacts expire after 30 days, so create the release within that
-window. The attached release assets remain available for later cloud publishing.
+and `pacletpage-build.tar.gz`. It uses the verified commit's release notes and
+becomes public only after all assets are attached. A retry accepts identical
+assets and refuses to overwrite changed ones. CI artifacts expire after 30
+days; create the release within that window.
 
-Protect `main` and release tags against unreviewed changes. Require the hosted
-repository check before merging; require successful native CI before creating
-a release tag. Cloud publication is a separate manual operation.
-
-## Publish with PacletPage
-
-The workflow passes the repository's cloud credentials only to its final
-publishing step. PacletPage manages resource deployment, documentation and the
-site check after cloud authentication.
-
-Dispatch **Publish** from `main` with an existing release tag. It checks that
-release's recorded CI run, downloads its assets, verifies their hashes, and
-restores the PacletPage build beside the tagged source. The existing
-`scripts/docs.wls publish` command checks that the restored build matches the
-archive in `dist`, then uses PacletPage with both build stages disabled. It
-checks the archive hash again after publication and requires successful
-resource deployment and site validation. It does not submit to the Wolfram
-Paclet Repository.
-
-For a local release, run `make check-publish` before `make publish`, and connect
-to the intended Wolfram Cloud account in the publishing kernel. A changed
-source tree or missing build stamp fails before publication. Do not replace
-the verified archive or reuse its version for a different commit.
+For local verification, run `make check-publish`. Run `make publish` only from
+the intended release checkout and publishing account. A changed source tree,
+missing build stamp or mismatched archive fails before publication. Do not
+reuse a published version for another commit.

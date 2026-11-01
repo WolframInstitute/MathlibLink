@@ -1,9 +1,6 @@
 name: Prepare MathlibLink
-description: Install Wolfram 15 on hosted runners, check its license and prepare the pinned mathlib runtime.
+description: Verify the container license and prepare the pinned mathlib and documentation tools.
 inputs:
-  system:
-    description: Expected Wolfram SystemID.
-    required: true
   documentation:
     description: Require the pinned PacletPage builder and a working front end.
     default: 'false'
@@ -21,173 +18,9 @@ runs:
         test -n "$MATHLIBLINK_ENTITLEMENT" || { echo '::error::Set the WOLFRAMSCRIPT_ENTITLEMENTID repository secret; see docs/workflows.md.'; exit 1; }
         [[ "$MATHLIBLINK_ENTITLEMENT" != *$'\n'* && "$MATHLIBLINK_ENTITLEMENT" != *$'\r'* ]] || { echo '::error::The entitlement ID must be one line.'; exit 1; }
 
-    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
-      if: runner.os != 'Linux'
-      with:
-        python-version: '3.12'
-
-    - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
-      id: msys
-      if: runner.os == 'Windows'
-      with:
-        release: false
-        install: make
-
-    - name: Add GNU make to the Windows PATH
-      if: runner.os == 'Windows'
-      shell: pwsh
-      env:
-        MSYS_DIRECTORY: ${{ steps.msys.outputs.msys2-location }}
-      run: |
-        Join-Path $env:MSYS_DIRECTORY 'usr\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-    - name: Download the pinned native Wolfram installer
-      if: runner.os != 'Linux'
-      shell: bash
-      run: |
-        if [ "$RUNNER_OS" = macOS ]; then
-          curl --http1.1 --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 60 \
-            --header 'Cache-Control: no-cache' --output "$RUNNER_TEMP/wolfram-download-center.html" https://www.wolfram.com/download-center/
-        fi
-        python - <<'PY'
-        import hashlib, os, re, shutil, subprocess, tempfile
-        from concurrent.futures import ThreadPoolExecutor
-        from html.parser import HTMLParser
-        from pathlib import Path
-        from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
-
-        class DownloadLinks(HTMLParser):
-            def __init__(self):
-                super().__init__()
-                self.links = set()
-
-            def handle_starttag(self, tag, attributes):
-                if tag != "a":
-                    return
-                link = urlsplit(dict(attributes).get("href", ""))
-                if (link.scheme, link.netloc, link.path) != ("https", "account.wolfram.com", "/dl/WolframApp"):
-                    return
-                query = parse_qs(link.query)
-                expected = {"version": ["15.0.1"], "platform": ["Mac"], "includesDocumentation": ["false"]}
-                if all(query.get(key) == value for key, value in expected.items()) and len(query.get("signature", [])) == 1:
-                    query["downloadManager"] = ["false"]
-                    self.links.add(urlunsplit((link.scheme, link.netloc, link.path, urlencode(query, doseq=True), "")))
-
-        root = Path(os.environ["RUNNER_TEMP"])
-        if os.environ["RUNNER_OS"] == "macOS":
-            metadata = root / "wolfram-download-center.html"
-            parser = DownloadLinks()
-            parser.feed(metadata.read_text(encoding="utf-8"))
-            metadata.unlink()
-            if len(parser.links) != 1:
-                raise SystemExit("The official Download Center must provide one Wolfram 15.0.1 Mac link; review the pinned installer before updating it.")
-            url = parser.links.pop()
-            filename, total = "Wolfram.dmg", 3635890238
-            expected = "1bb9130ca53e6798eb897336da28336e6ea3bc3ae2860e17ee97e0f9cdd46204"
-        elif os.environ["RUNNER_OS"] == "Windows":
-            url = "https://files.wolframcdn.com/packages/winget/15.0.0.0/WolframEngine_15.0.0_WIN.zip"
-            filename, total = "WolframEngine.zip", 3063249725
-            expected = "357ce8157a065355c113dbf50a9ac86a12f51e5ce63eefd1e9c541be05d026f4"
-        else:
-            raise SystemExit("Unsupported native installer platform.")
-
-        # The CDN can truncate open-ended transfers. Validate bounded ranges,
-        # then verify the complete official archive before exposing it.
-        chunk = 64 * 1024 * 1024
-        with tempfile.TemporaryDirectory(prefix="wolfram-parts-", dir=root) as temporary:
-            parts = Path(temporary)
-
-            def download(index):
-                start, end = index * chunk, min(total, (index + 1) * chunk) - 1
-                size = end - start + 1
-                output, headers = parts / f"{index}.part", parts / f"{index}.headers"
-                subprocess.run([
-                    "curl", "--silent", "--show-error", "--http1.1", "--fail", "--location",
-                    "--range", f"{start}-{end}", "--max-filesize", str(size),
-                    "--connect-timeout", "30", "--max-time", "120",
-                    "--retry", "3", "--retry-delay", "1", "--retry-all-errors",
-                    "--dump-header", str(headers), "--output", str(output), url
-                ], check=True, timeout=510)
-                ranges = re.findall(r"^Content-Range:\s*(.+)$", headers.read_text(), re.I | re.M)
-                if output.stat().st_size != size or not ranges or ranges[-1].strip() != f"bytes {start}-{end}/{total}":
-                    raise RuntimeError(f"Invalid installer range {start}-{end}.")
-                print(f"Verified installer range {start}-{end}.", flush=True)
-                return output
-
-            pool = ThreadPoolExecutor(max_workers=4)
-            try:
-                ordered = list(pool.map(download, range((total + chunk - 1) // chunk)))
-            finally:
-                pool.shutdown(wait=True, cancel_futures=True)
-            archive = parts / filename
-            with archive.open("wb") as target:
-                for part in ordered:
-                    with part.open("rb") as source:
-                        shutil.copyfileobj(source, target)
-                    part.unlink()
-            with archive.open("rb") as source:
-                digest = hashlib.file_digest(source, "sha256").hexdigest()
-            if digest != expected:
-                raise RuntimeError("Wolfram installer checksum mismatch.")
-            archive.replace(root / filename)
-        print(f"Verified {filename}: {digest}", flush=True)
-        PY
-
-    - name: Install pinned Wolfram for macOS
-      if: runner.os == 'macOS'
-      shell: bash
-      run: |
-        installer="$RUNNER_TEMP/Wolfram.dmg"
-        mount="$RUNNER_TEMP/wolfram-volume"
-        app="$RUNNER_TEMP/Wolfram.app"
-        mkdir -p "$mount"
-        hdiutil attach -readonly -nobrowse -mountpoint "$mount" "$installer"
-        trap 'hdiutil detach "$mount" >/dev/null' EXIT
-        ditto "$mount/Wolfram.app" "$app"
-        codesign --verify --deep --strict "$app"
-        codesign --verify -R='anchor apple generic and identifier "com.wolfram.WolframApp" and certificate leaf[subject.OU] = "D2Y8ST33G6"' "$app"
-        test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = 15.0.1
-        launcher="$app/Contents/MacOS"
-        kernel="$launcher/WolframKernel"
-        test -x "$launcher/wolframscript"
-        test -x "$kernel"
-        echo "$launcher" >> "$GITHUB_PATH"
-        echo "WOLFRAMSCRIPT_KERNELPATH=$kernel" >> "$GITHUB_ENV"
-        rm "$installer"
-
-    - name: Install pinned Wolfram Engine for Windows
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        $ErrorActionPreference = 'Stop'
-        $archive = Join-Path $env:RUNNER_TEMP 'WolframEngine.zip'
-        $payload = Join-Path $env:RUNNER_TEMP 'wolfram-engine-installer'
-        $installRoot = Join-Path $env:ProgramFiles 'Wolfram Research\Wolfram Engine\15.0'
-        $log = Join-Path $env:RUNNER_TEMP 'wolfram-engine-install.log'
-        Expand-Archive $archive -DestinationPath $payload
-        $installer = Join-Path $payload 'M-WIN64-WolframEngine-15.0.0-13651831.exe'
-        $arguments = '/quiet /norestart /log "{0}" InstallFolder="{1}"' -f $log, $installRoot
-        $process = Start-Process -FilePath $installer -ArgumentList $arguments -Wait -PassThru
-        if ($process.ExitCode -notin @(0, 3010)) { throw "Wolfram installation failed with code $($process.ExitCode); see $log." }
-        $kernel = Join-Path $installRoot 'WolframKernel.exe'
-        $launcher = Join-Path $env:ProgramFiles 'Wolfram Research\WolframScript\wolframscript.exe'
-        if (!(Test-Path $kernel)) { throw "Missing native kernel: $kernel" }
-        if (!(Test-Path $launcher)) {
-          $launcher = Get-ChildItem $installRoot -Filter wolframscript.exe -Recurse | Select-Object -First 1 -ExpandProperty FullName
-        }
-        if (!$launcher -or !(Test-Path $launcher)) { throw 'The installer did not provide wolframscript.exe.' }
-        Split-Path $launcher | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        "WOLFRAMSCRIPT_KERNELPATH=$kernel" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        $python = (Get-Command python.exe).Source
-        $python3 = Join-Path (Split-Path $python) 'python3.exe'
-        if (!(Test-Path $python3)) { Copy-Item $python $python3 }
-        Remove-Item $archive
-        Remove-Item $payload -Recurse
-
-    - name: Check native tools and Wolfram license
+    - name: Check container tools and Wolfram license
       shell: bash
       env:
-        MATHLIBLINK_SYSTEM: ${{ inputs.system }}
         MATHLIBLINK_ENTITLEMENT: ${{ inputs.entitlement }}
       run: |
         for tool in git make python3 wolframscript; do
@@ -200,7 +33,7 @@ runs:
         # Wolfram symbols must reach the kernel literally.
         # shellcheck disable=SC2016
         wolframscript -code '
-          If[! TrueQ[15 <= $VersionNumber < 16] || $SystemID =!= Environment["MATHLIBLINK_SYSTEM"], Print[{$Version, $SystemID}]; Exit[1]];
+          If[! TrueQ[15 <= $VersionNumber < 16] || $SystemID =!= "Linux-x86-64", Print[{$Version, $SystemID}]; Exit[1]];
           Print[$Version, " | ", $SystemID];'
 
     - name: Install the pinned mathlib runtime

@@ -25,3 +25,10 @@ experiments and logs belong in ignored build/. Keep runtime caches outside
 the paclet. Do not publish or push without an explicit release instruction.
 
 Commit focused verified changes using type(scope): short description.
+
+Follow PARILink's CI/CD structure: native Lean/mathlib runtime checks on the
+supported platforms, with Wolfram tests, documentation and archive checks in
+the official Linux Wolfram Engine container. Do not download desktop Wolfram
+installers in CI. Use one release pipeline: verify the exact CI artifact,
+publish it with PacletPage, then attach the same archive to the GitHub release.
+State native-runtime and Wolfram-interface coverage separately.
