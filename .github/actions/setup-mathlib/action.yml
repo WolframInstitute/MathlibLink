@@ -41,33 +41,33 @@ runs:
       run: |
         Join-Path $env:MSYS_DIRECTORY 'usr\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: Install pinned Wolfram Engine for macOS
+    - name: Install pinned Wolfram for macOS
       if: runner.os == 'macOS'
       shell: bash
       run: |
-        installer="$RUNNER_TEMP/WolframEngine.dmg"
-        mount="$RUNNER_TEMP/wolfram-engine-volume"
-        app="$RUNNER_TEMP/Wolfram Engine.app"
+        installer="$RUNNER_TEMP/Wolfram.dmg"
+        mount="$RUNNER_TEMP/wolfram-volume"
+        app="$RUNNER_TEMP/Wolfram.app"
         for attempt in 1 2 3 4; do
-          if curl --http1.1 --fail --location --continue-at - --output "$installer" \
-            https://files.wolframcdn.com/packages/Homebrew/15.0.0.0/WolframEngine_15.0.0_MAC.dmg; then
+          if curl --http1.1 --fail --location --continue-at - --connect-timeout 30 --max-time 600 --output "$installer" \
+            'https://account.wolfram.com/dl/WolframApp?version=15.0.1&platform=Mac&includesDocumentation=false&signature=09d7f5942c445782756030c9300d6386f8265c6910537efd11672b0a2b38d638bf4b845786832252bbd5eca6ef9bb82510dd952edafc424eaaab4d58&downloadManager=false'; then
             break
           fi
           if [ "$attempt" -eq 4 ]; then exit 1; fi
           sleep "$attempt"
         done
-        echo "ca3f0252b0df22d87d139dee1371a2a53be9784106b5974787dd024ef6ef959b  $installer" | shasum -a 256 --check
+        echo "1bb9130ca53e6798eb897336da28336e6ea3bc3ae2860e17ee97e0f9cdd46204  $installer" | shasum -a 256 --check
         mkdir -p "$mount"
         hdiutil attach -readonly -nobrowse -mountpoint "$mount" "$installer"
         trap 'hdiutil detach "$mount" >/dev/null' EXIT
-        ditto "$mount/Wolfram Engine.app" "$app"
-        launcher="$app/Contents/Resources/Wolfram Player.app/Contents/MacOS"
+        ditto "$mount/Wolfram.app" "$app"
+        codesign --verify --deep --strict "$app"
+        codesign --verify -R='anchor apple generic and identifier "com.wolfram.WolframApp" and certificate leaf[subject.OU] = "D2Y8ST33G6"' "$app"
+        test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = 15.0.1
+        launcher="$app/Contents/MacOS"
+        kernel="$launcher/WolframKernel"
         test -x "$launcher/wolframscript"
-        kernel=''
-        for candidate in "$app/Contents/MacOS/WolframKernel" "$launcher/WolframKernel"; do
-          if [ -x "$candidate" ]; then kernel="$candidate"; break; fi
-        done
-        test -n "$kernel" || { echo '::error::The installed app has no WolframKernel.'; exit 1; }
+        test -x "$kernel"
         echo "$launcher" >> "$GITHUB_PATH"
         echo "WOLFRAMSCRIPT_KERNELPATH=$kernel" >> "$GITHUB_ENV"
         rm "$installer"

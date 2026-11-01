@@ -270,6 +270,6 @@ jobs:
             value = MathlibCall[session, "Nat.choose", 10, 3];
             proof = ProveMathlib[session, "forall n : Nat, n + 0 = n", "by intro n; rfl"];
             rejected = ProveMathlib[session, "False", "by sorry"];
-            ok = value === 120 && TrueQ[proof["Verified"]] && FailureQ[rejected];
+            ok = value === 120 && TrueQ[proof["Verified"]] && rejected["Tag"] === "MathlibUntrustedProof" && session["Status"] === "Ready";
             DeleteObject[session];
             If[! TrueQ[ok], Print[InputForm[{value, proof, rejected}]]; Exit[1]];'

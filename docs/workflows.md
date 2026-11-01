@@ -25,7 +25,7 @@ custom runner registration is required.
 | --- | --- | --- |
 | Linux x86-64 | `ubuntu-24.04` | Official `wolframresearch/wolframengine:15.0` container, pinned by digest |
 | Windows x86-64 | `windows-2025` | Wolfram's 15.0.0 installer, pinned by SHA-256 |
-| macOS ARM64 | `macos-15` | Wolfram's 15.0.0 disk image, pinned by SHA-256 |
+| macOS ARM64 | `macos-15` | Wolfram's 15.0.1 desktop image, pinned by SHA-256 |
 
 All three run the complete source, local and live mathlib checks, followed by
 smoke tests of the installed release archive. Windows and macOS execute native
@@ -33,14 +33,15 @@ Wolfram kernels. Linux uses the official engine container, as PARILink and
 Ruliology do. The setup action checks the actual Wolfram version and system ID;
 it does not substitute another platform or skip unavailable tests.
 
-The native installer URLs and checksums come from the
-[Homebrew cask](https://formulae.brew.sh/cask/wolfram-engine) and
+The macOS image comes from the public
+[Wolfram Download Center](https://www.wolfram.com/download-center/).
+Its SHA-256 is pinned from the official download; the setup action also checks
+its version and Wolfram Research's Apple Developer ID signature before using
+the bundled command-line executables. The app stays in the runner's temporary
+directory. Windows uses the URL, checksum and silent installation switches in
 [Microsoft's WinGet manifest](https://github.com/microsoft/winget-pkgs/blob/master/manifests/w/WolframResearch/WolframEngine/15.0.0/WolframResearch.WolframEngine.installer.yaml).
-Wolfram's [setup reference](https://github.com/WolframResearch/skills/blob/main/skills/wolfram-setup/references/get-wolfram-engine.md)
-uses these distribution channels. Windows installation uses the documented
-WinGet Burn switches with the manifest's installation directory. Python and
-GNU make are prepared automatically, and `InstallMathlib[]` prepares the
-pinned local Lean, LeanLink and mathlib runtime.
+Python and GNU make are prepared automatically, and `InstallMathlib[]`
+prepares the pinned local Lean, LeanLink and mathlib runtime.
 
 PacletPage building and publishing run in the Linux container with its front
 end configured for offscreen rendering. Documentation tools are fetched from
