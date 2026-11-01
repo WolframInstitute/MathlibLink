@@ -39,14 +39,14 @@ jobs:
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 3
       matrix:
         include:
           - system: Linux-x86-64
             runner: ubuntu-24.04
             container:
               image: wolframresearch/wolframengine:15.0@sha256:3ac08d6aaa33e6dccdda38d14cf8a7e5c22cc84d037a1a7562900914a487ef65
-              options: --user root
+              options: --user root --init
           - system: Windows-x86-64
             runner: windows-2025
             container: ''
@@ -94,7 +94,7 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: wolframresearch/wolframengine:15.0@sha256:3ac08d6aaa33e6dccdda38d14cf8a7e5c22cc84d037a1a7562900914a487ef65
-      options: --user root
+      options: --user root --init
     env:
       QT_QPA_PLATFORM: offscreen
     timeout-minutes: 180
@@ -189,14 +189,14 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 3
       matrix:
         include:
           - system: Linux-x86-64
             runner: ubuntu-24.04
             container:
               image: wolframresearch/wolframengine:15.0@sha256:3ac08d6aaa33e6dccdda38d14cf8a7e5c22cc84d037a1a7562900914a487ef65
-              options: --user root
+              options: --user root --init
           - system: Windows-x86-64
             runner: windows-2025
             container: ''

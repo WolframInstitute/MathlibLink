@@ -94,7 +94,7 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: wolframresearch/wolframengine:15.0@sha256:3ac08d6aaa33e6dccdda38d14cf8a7e5c22cc84d037a1a7562900914a487ef65
-      options: --user root
+      options: --user root --init
     env:
       QT_QPA_PLATFORM: offscreen
     timeout-minutes: 90
