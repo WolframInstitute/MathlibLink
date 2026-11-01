@@ -101,9 +101,38 @@ VerificationTest[
 	], {"MathlibInstallCancelled", False}, TestID -> "cancelled-clone-removes-only-new-owned-directory"
 ]
 
+(* kill -0 also succeeds for a dead Linux zombie awaiting its parent's wait.
+   Inspect /proc on Linux; unknown or live states must still fail cleanup. *)
+installerProcessState[pid_String] := Module[{file, status, states, result},
+	If[StringStartsQ[$SystemID, "Linux"],
+		file = FileNameJoin[{"/proc", pid, "status"}];
+		status = Quiet[Check[ReadString[file], $Failed]];
+		states = If[StringQ[status], StringCases[status, RegularExpression["(?m)^State:\\s+([A-Za-z])"] -> "$1"], {}];
+		If[Length[states] === 1, Return[First[states]]];
+		Return[If[DirectoryQ[DirectoryName[file]], "Unknown", "Absent"]]
+	];
+	result = Quiet[Check[RunProcess[{"/bin/kill", "-0", pid}], $Failed]];
+	Which[
+		AssociationQ[result] && result["ExitCode"] === 0, "Alive",
+		AssociationQ[result] && result["ExitCode"] === 1, "Absent",
+		True, "Unknown"
+	]
+]
+
+installerTerminatedStateQ[state_] := MemberQ[{"Absent", "Z", "X"}, state]
+
+installerWaitForTermination[pids_List] := Module[{deadline = AbsoluteTime[] + 2, states},
+	states = installerProcessState /@ pids;
+	While[! AllTrue[states, installerTerminatedStateQ] && AbsoluteTime[] < deadline,
+		Pause[0.02];
+		states = installerProcessState /@ pids
+	];
+	states
+]
+
 (* The Unix process fixture creates both a child and a grandchild. Each PID is
    supplied by that owned process; cleanup never targets unrelated processes. *)
-installerProcessFixture[mode_String] := Module[{directory = CreateDirectory[], files, started = AbsoluteTime[], result, pids = {}, stopped},
+installerProcessFixture[mode_String] := Module[{directory = CreateDirectory[], files, started = AbsoluteTime[], result, pids = {}, states},
 	files = FileNameJoin[{directory, #}] & /@ {"child", "grandchild"};
 	WithCleanup[
 		result = Block[{WolframInstitute`MathlibLink`Installation`Private`$installCancellation = Function[Null,
@@ -115,11 +144,28 @@ installerProcessFixture[mode_String] := Module[{directory = CreateDirectory[], f
 			"MathlibInstall"
 		], "Aborted"]];
 		pids = Select[StringTrim[Import[#, "Text"]] & /@ Select[files, FileExistsQ], StringMatchQ[#, DigitCharacter ..] &];
-		Pause[0.1];
-		stopped = AllTrue[pids, RunProcess[{"/bin/kill", "-0", #}]["ExitCode"] =!= 0 &];
-		{If[FailureQ[result], result["Tag"], result], Length[pids], stopped},
+		states = installerWaitForTermination[pids];
+		Print["Installer owned descendants (", mode, "): ", AssociationThread[pids, states]];
+		{If[FailureQ[result], result["Tag"], result], Length[pids], AllTrue[states, installerTerminatedStateQ]},
 		Scan[Quiet[RunProcess[{"/bin/kill", "-KILL", #}]] &, pids];
 		DeleteDirectory[directory, DeleteContents -> True]
+	]
+]
+
+If[$OperatingSystem =!= "Windows",
+	VerificationTest[
+		Module[{process, pid, before, after},
+			process = StartProcess[{"/bin/sh", "-c", "printf '%s\\n' \"$$\"; exec sleep 30"}];
+			WithCleanup[
+				pid = TimeConstrained[ReadLine[process], 3, $TimedOut];
+				If[! StringQ[pid] || ! StringMatchQ[pid, DigitCharacter ..], Return[{pid, False}]];
+				before = installerTerminatedStateQ[installerProcessState[pid]];
+				KillProcess[process];
+				after = AllTrue[installerWaitForTermination[{pid}], installerTerminatedStateQ];
+				{before, after},
+				If[ProcessStatus[process] === "Running", KillProcess[process]]
+			]
+		], {False, True}, TestID -> "cleanup-check-distinguishes-live-process-from-terminated-process"
 	]
 ]
 
