@@ -123,7 +123,9 @@ runs:
         wolframscript -code '
           PacletDirectoryLoad[FileNameJoin[{Directory[], "MathlibLink"}]];
           Needs["WolframInstitute`MathlibLink`"];
-          result = InstallMathlib[];
+          lastStage = None;
+          result = InstallMathlib["ProgressFunction" -> Function[{stage, fraction},
+            If[stage =!= lastStage, Print["Mathlib setup: ", stage]; lastStage = stage]]];
           If[! MatchQ[result, File[_String]], Print[InputForm[result]]; Exit[1]];
           status = MathlibInstallation[];
           If[! AssociationQ[status] || status["Status"] =!= "Ready", Print[InputForm[status]]; Exit[1]];
