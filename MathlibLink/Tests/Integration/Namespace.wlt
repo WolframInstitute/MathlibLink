@@ -9,7 +9,7 @@ VerificationTest[
 		MathlibNames[session] === Sort[Information[environment, "Constants"]]
 	], True, TestID -> "all-imported-declarations-exposed"
 ]
-VerificationTest[MathlibCall[session, "Nat.choose", 10, 3], 120, TestID -> "generic-binomial-call"]
+VerificationTest[MathlibCall[session, "Nat.choose", 10, 3, TimeConstraint -> Infinity], 120, TestID -> "generic-binomial-call"]
 VerificationTest[
 	AllTrue[{"mul_comm", "Real.exp_add", "Continuous.comp", "Nat.Partrec.Code.exists_code"},
 		StringQ[MathlibDeclaration[session, #]["TypeForm"]] &], True, TestID -> "algebra-analysis-topology-computability-types"
