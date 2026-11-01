@@ -59,3 +59,18 @@ axioms. The installed Lean toolchain, imported libraries and LeanLink bridge
 remain part of the trusted implementation. Namespace coverage does not claim
 that every imported function was numerically tested or every imported theorem
 was independently reproved by MathlibLink.
+
+## Documentation checks
+
+The 16 documentation pages contain 122 executable inputs. Every input was
+checked against the pinned runtime; exact comparisons returned True, and the
+intentional admitted proofs were rejected. The resource definition adds two
+verified examples. All 17 notebooks match their authored input expressions
+and expected output counts, with no message cells or Code-style cells.
+
+Nine computed figures and the session/object displays were rendered and
+inspected in light and dark appearances. The final proof tutorial was
+assembled through the converter's evaluator interface from its recorded
+outputs after license interruptions; every supplied input had to match its
+verified source exactly. Raw outputs, provenance and notebook audits are
+retained under build/.
