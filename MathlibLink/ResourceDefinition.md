@@ -33,11 +33,11 @@ checks a theorem. [InstallMathlib]() prepares the external runtime.
 Compute an exact binomial coefficient:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibCall[session, "Nat.choose", 10, 4], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic"}], MathlibCall[session, "Nat.choose", 10, 4], DeleteObject[session]]
 ```
 
 Read a theorem from real analysis:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibDeclaration[session, "Real.exp_add"]["TypeForm"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Analysis.Complex.Exponential"}], MathlibDeclaration[session, "Real.exp_add"]["TypeForm"], DeleteObject[session]]
 ```

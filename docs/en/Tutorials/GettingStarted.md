@@ -43,6 +43,10 @@ Open the full library:
 session = StartMathlibSession[]
 ```
 
+The default session exposes the whole library. For a focused computation,
+"Imports" can select smaller modules to reduce startup time and memory use;
+the following tutorials demonstrate this choice.
+
 ## Find a declaration
 
 Search for natural-number square-root declarations:

@@ -33,7 +33,7 @@ RelatedTutorials: [ValuesAndProofs]
 Prove an identity for every natural number:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Init"}]
 ```
 
 Construct the theorem:
@@ -62,16 +62,16 @@ DeleteObject[session]
 
 ## Scope
 
-Use mathlib's ring tactic for a polynomial identity:
+Import the exponential function and its theorems:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Mathlib.Analysis.Complex.Exponential"}]
 ```
 
-Construct the polynomial theorem:
+Check a real-analysis law using a theorem from mathlib:
 
 ```wl
-ProveMathlib[session, "∀ x : Int, (x + 1)^2 = x^2 + 2*x + 1", "by intro x; ring"]
+ProveMathlib[session, "∀ x y : Real, Real.exp (x + y) = Real.exp x * Real.exp y", "by intro x y; exact Real.exp_add x y"]
 ```
 
 Close the session:
@@ -87,7 +87,7 @@ DeleteObject[session]
 Set a five-minute proof budget:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Init"}]
 ```
 
 Check the proposition with the selected budget:
@@ -107,5 +107,5 @@ DeleteObject[session]
 An admitted statement does not produce a checked theorem:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], ProveMathlib[session, "False", "by sorry"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Init"}], ProveMathlib[session, "False", "by sorry"], DeleteObject[session]]
 ```

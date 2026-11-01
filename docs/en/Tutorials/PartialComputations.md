@@ -20,10 +20,10 @@ not return a value. The
 [upstream reference](https://leanprover-community.github.io/mathlib4_docs/Mathlib/Computability/PartrecCode.html)
 connects codes to the partial-recursive function class.
 
-Open a session and inspect the representation theorem:
+Import the partial-recursive code model:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Mathlib.Computability.PartrecCode"}]
 ```
 
 Read its quantified statement:

@@ -30,7 +30,7 @@ RelatedTutorials: [ValuesAndProofs]
 Retain an exact real expression:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Mathlib.Analysis.Real.Sqrt"}]
 ```
 
 Construct the retained expression:
@@ -62,7 +62,7 @@ DeleteObject[session]
 Inspect a theorem's originating module:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibDeclaration[session, "Real.exp_add"]["Module"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Analysis.Complex.Exponential"}], MathlibDeclaration[session, "Real.exp_add"]["Module"], DeleteObject[session]]
 ```
 
 ## Properties and Relations
@@ -70,7 +70,7 @@ WithCleanup[session = StartMathlibSession[], MathlibDeclaration[session, "Real.e
 Use a retained natural number in another expression:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Init"}]
 ```
 
 Retain a typed natural number:

@@ -19,9 +19,9 @@ RelatedTutorials: [GettingStarted, ValuesAndProofs]
 
 - The result is a [MathlibSession]() object.
 - The default import is "Mathlib", exposing the full imported declaration namespace.
-- "Imports" can select smaller mathlib modules and their dependencies.
+- "Imports" selects smaller Lean modules and their dependencies, reducing startup time and memory use.
 - Setup must be completed with [InstallMathlib]() before opening a session.
-- [DeleteObject]() closes a session and releases its retained objects.
+- [DeleteObject]() closes a session and invalidates its retained objects. Imported modules remain cached until the kernel exits.
 - A failure to open the selected runtime gives [Failure]().
 
 | | | |
@@ -76,5 +76,5 @@ DeleteObject[session]
 Use the default runtime directory explicitly:
 
 ```wl
-WithCleanup[session = StartMathlibSession["Directory" -> MathlibInstallation[]["Directory"]], session["Status"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Directory" -> MathlibInstallation[]["Directory"], "Imports" -> {"Init"}], session["Status"], DeleteObject[session]]
 ```

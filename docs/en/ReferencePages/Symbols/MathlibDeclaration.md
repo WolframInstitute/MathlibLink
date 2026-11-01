@@ -29,7 +29,7 @@ RelatedTutorials: [GettingStarted, ValuesAndProofs, PartialComputations]
 Open a session:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Mathlib.Algebra.Group.Semigroup"}]
 ```
 
 Inspect commutativity of multiplication:
@@ -55,19 +55,19 @@ DeleteObject[session]
 Inspect a theorem from real analysis:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibDeclaration[session, "Real.exp_add"]["TypeForm"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Analysis.Complex.Exponential"}], MathlibDeclaration[session, "Real.exp_add"]["TypeForm"], DeleteObject[session]]
 ```
 
 Inspect continuity of composition:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibDeclaration[session, "Continuous.comp"]["TypeForm"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Topology.Continuous"}], MathlibDeclaration[session, "Continuous.comp"]["TypeForm"], DeleteObject[session]]
 ```
 
 Inspect the representation theorem for partial recursive functions:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibDeclaration[session, "Nat.Partrec.Code.exists_code"]["TypeForm"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Computability.PartrecCode"}], MathlibDeclaration[session, "Nat.Partrec.Code.exists_code"]["TypeForm"], DeleteObject[session]]
 ```
 
 ## Applications
@@ -75,7 +75,7 @@ WithCleanup[session = StartMathlibSession[], MathlibDeclaration[session, "Nat.Pa
 Find the upstream page for a theorem:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], Hyperlink["Exponential of a sum", MathlibDeclaration[session, "Real.exp_add"]["DocumentationURL"]], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Analysis.Complex.Exponential"}], Hyperlink["Exponential of a sum", MathlibDeclaration[session, "Real.exp_add"]["DocumentationURL"]], DeleteObject[session]]
 ```
 
 ## Properties and Relations
@@ -83,5 +83,5 @@ WithCleanup[session = StartMathlibSession[], Hyperlink["Exponential of a sum", M
 Inspect the axioms used by the natural-number addition theorem:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibDeclaration[session, "Nat.add_comm"]["Axioms"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Init"}], MathlibDeclaration[session, "Nat.add_comm"]["Axioms"], DeleteObject[session]]
 ```

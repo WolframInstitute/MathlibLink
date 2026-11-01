@@ -29,7 +29,7 @@ RelatedTutorials: [GettingStarted]
 Find the declarations related to natural-number square roots:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibNames[session, "Nat.*sqrt*"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Sqrt"}], MathlibNames[session, "Nat.*sqrt*"], DeleteObject[session]]
 ```
 
 ## Scope
@@ -37,7 +37,7 @@ WithCleanup[session = StartMathlibSession[], MathlibNames[session, "Nat.*sqrt*"]
 Look up an exact theorem name:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibNames[session, "Real.exp_add"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Analysis.Complex.Exponential"}], MathlibNames[session, "Real.exp_add"], DeleteObject[session]]
 ```
 
 Count all available declarations:

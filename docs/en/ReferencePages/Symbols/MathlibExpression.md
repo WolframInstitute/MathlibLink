@@ -35,7 +35,7 @@ MathlibExpression["(2 : Real)"]
 Supply a function to a list operation:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibCall[session, "List.map", MathlibExpression["fun n : Nat => n + 1"], {2, 4, 8}], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Init"}], MathlibCall[session, "List.map", MathlibExpression["fun n : Nat => n + 1"], {2, 4, 8}], DeleteObject[session]]
 ```
 
 ## Properties and Relations
@@ -43,5 +43,5 @@ WithCleanup[session = StartMathlibSession[], MathlibCall[session, "List.map", Ma
 Pass ordinary text as data:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibCall[session, "String.length", "Nat.sqrt 16"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Init"}], MathlibCall[session, "String.length", "Nat.sqrt 16"], DeleteObject[session]]
 ```

@@ -14,11 +14,11 @@ RelatedTutorials: [GettingStarted, ValuesAndProofs, PartialComputations]
 ## Binomial coefficients modulo two
 
 Exact arithmetic makes it possible to compare a Lean computation directly
-with a Wolfram computation before plotting a larger pattern. Begin with one
-coefficient in Pascal's triangle:
+with a Wolfram computation before plotting a larger pattern. Import the
+binomial-coefficient and totient modules used in this experiment:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic", "Mathlib.Data.Nat.Totient"}]
 ```
 
 Compute the coefficient in Lean:

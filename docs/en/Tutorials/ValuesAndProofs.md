@@ -18,10 +18,10 @@ states a proposition and provides a proof term that Lean's kernel can check.
 The distinction matters when moving from a tested example to a claim about
 all inputs.
 
-Open a session:
+Import the ring tactic for this identity:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Mathlib.Tactic.Ring"}]
 ```
 
 Evaluate one natural-number identity:
@@ -52,11 +52,30 @@ identity["Axioms"]
 dependencies. The proof concerns the stated Lean proposition. It does not by
 itself establish the correctness of a separate Wolfram implementation.
 
+The theorem `mul_comm` applies to a type with commutative multiplication.
+Inspect the type to see its algebraic assumptions:
+
+```wl
+MathlibDeclaration[session, "mul_comm"]["TypeForm"]
+```
+
+Close this session before starting the next example:
+
+```wl
+DeleteObject[session]
+```
+
 ## Typed expressions without numerical evaluation
 
 Mathlib's real numbers support exact mathematical reasoning. Many definitions
 involving them are noncomputable: they are well-typed mathematical objects
 without an executable numerical implementation through Lean's evaluator.
+Import real square roots:
+
+```wl
+session = StartMathlibSession["Imports" -> {"Mathlib.Analysis.Real.Sqrt"}]
+```
+
 Retain the exact real square root of two:
 
 ```wl
@@ -76,36 +95,35 @@ root["TermForm"]
 ```
 
 Keeping the term does not replace it with a machine-precision approximation.
-A declaration can still participate in a checked proof:
+Inspect mathlib's theorem for the square of a real square root:
 
 ```wl
-rootIdentity = ProveMathlib[session, "(Real.sqrt 2)^2 = 2", "by norm_num"]
+rootIdentity = MathlibDeclaration[session, "Real.sq_sqrt"]
 ```
 
-## Generic mathematical hypotheses
-
-The theorem `mul_comm` applies to a type equipped with the required
-commutative multiplication structure. Its Lean type states those assumptions:
+Read its nonnegativity hypothesis and conclusion:
 
 ```wl
-MathlibDeclaration[session, "mul_comm"]["TypeForm"]
+rootIdentity["TypeForm"]
 ```
 
-Lean infers many implicit arguments and typeclass instances when a theorem is
-used. Type annotations make a concrete instance explicit. Prove a law over
-real numbers using an existing mathlib theorem:
+Close the square-root session:
 
 ```wl
-exponentialLaw = ProveMathlib[session, "∀ x y : Real, Real.exp (x + y) = Real.exp x * Real.exp y", "by intro x y; exact Real.exp_add x y"]
+DeleteObject[session]
 ```
 
-Read the resulting statement:
-
-```wl
-exponentialLaw["TypeForm"]
-```
+Lean uses a theorem's type to infer its implicit arguments and typeclass
+instances. The scope example for [ProveMathlib]() checks an exponential law
+over real numbers using an existing mathlib theorem.
 
 ## Rejected admissions
+
+Lean's core module suffices for this example:
+
+```wl
+session = StartMathlibSession["Imports" -> {"Init"}]
+```
 
 Lean source can contain `sorry`, which admits a proposition without supplying
 a proof. The proof interface rejects such a result:

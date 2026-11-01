@@ -36,7 +36,7 @@ RelatedTutorials: [GettingStarted, ArithmeticPatterns]
 Compute a binomial coefficient:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibCall[session, "Nat.choose", 10, 4], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic"}], MathlibCall[session, "Nat.choose", 10, 4], DeleteObject[session]]
 ```
 
 ## Scope
@@ -44,13 +44,13 @@ WithCleanup[session = StartMathlibSession[], MathlibCall[session, "Nat.choose", 
 Find a greatest common divisor:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibCall[session, "Nat.gcd", 84, 30], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Init"}], MathlibCall[session, "Nat.gcd", 84, 30], DeleteObject[session]]
 ```
 
 Supply a typed function argument:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibCall[session, "List.map", MathlibExpression["fun n : Nat => n * n"], Range[0, 5]], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Init"}], MathlibCall[session, "List.map", MathlibExpression["fun n : Nat => n * n"], Range[0, 5]], DeleteObject[session]]
 ```
 
 ## Options
@@ -60,7 +60,7 @@ WithCleanup[session = StartMathlibSession[], MathlibCall[session, "List.map", Ma
 Keep a real square root as a typed expression:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Mathlib.Analysis.Real.Sqrt"}]
 ```
 
 Construct the retained expression:
@@ -86,7 +86,7 @@ DeleteObject[session]
 Use a five-minute budget:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibCall[session, "Nat.choose", 40, 20, TimeConstraint -> 300], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic"}], MathlibCall[session, "Nat.choose", 40, 20, TimeConstraint -> 300], DeleteObject[session]]
 ```
 
 ## Applications
@@ -94,7 +94,7 @@ WithCleanup[session = StartMathlibSession[], MathlibCall[session, "Nat.choose", 
 Compare integer square roots computed by Lean and Wolfram Language:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibCall[session, "List.map", MathlibExpression["Nat.sqrt"], Range[0, 32]] === Floor[Sqrt[Range[0, 32]]], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Sqrt"}], MathlibCall[session, "List.map", MathlibExpression["Nat.sqrt"], Range[0, 32]] === Floor[Sqrt[Range[0, 32]]], DeleteObject[session]]
 ```
 
 For larger sweeps, send one list-producing Lean expression through

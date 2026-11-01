@@ -29,7 +29,7 @@ RelatedTutorials: [GettingStarted]
 Create a session:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Sqrt"}]
 ```
 
 Inspect its state:
@@ -61,7 +61,7 @@ DeleteObject[session]
 Create another session:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Init"}]
 ```
 
 Close it:

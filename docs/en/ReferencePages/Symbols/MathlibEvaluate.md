@@ -34,7 +34,7 @@ RelatedTutorials: [ArithmeticPatterns, ValuesAndProofs, PartialComputations]
 Compute exact squares in Lean:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibEvaluate[session, "(List.range 8).map (fun n => n * n)"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Init"}], MathlibEvaluate[session, "(List.range 8).map (fun n => n * n)"], DeleteObject[session]]
 ```
 
 ## Scope
@@ -42,7 +42,7 @@ WithCleanup[session = StartMathlibSession[], MathlibEvaluate[session, "(List.ran
 Evaluate an explicitly typed expression:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibEvaluate[session, "(7 : Int) - 12"], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Init"}], MathlibEvaluate[session, "(7 : Int) - 12"], DeleteObject[session]]
 ```
 
 ## Options
@@ -52,7 +52,7 @@ WithCleanup[session = StartMathlibSession[], MathlibEvaluate[session, "(7 : Int)
 Retain a noncomputable real expression:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Mathlib.Analysis.Real.Sqrt"}]
 ```
 
 Construct the retained expression:
@@ -78,7 +78,7 @@ DeleteObject[session]
 Use a five-minute budget:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], MathlibEvaluate[session, "Nat.choose 40 20", TimeConstraint -> 300], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic"}], MathlibEvaluate[session, "Nat.choose 40 20", TimeConstraint -> 300], DeleteObject[session]]
 ```
 
 ## Applications
@@ -86,7 +86,7 @@ WithCleanup[session = StartMathlibSession[], MathlibEvaluate[session, "Nat.choos
 Plot Euler's totient for integers 1 through 64:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], ListPlot[MathlibEvaluate[session, "(List.range 64).map (fun n => Nat.totient (n + 1))"], DataRange -> {1, 64}, AxesLabel -> {"n", "Totient"}], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Totient"}], ListPlot[MathlibEvaluate[session, "(List.range 64).map (fun n => Nat.totient (n + 1))"], DataRange -> {1, 64}, AxesLabel -> {"n", "Totient"}], DeleteObject[session]]
 ```
 
 ---
@@ -94,5 +94,5 @@ WithCleanup[session = StartMathlibSession[], ListPlot[MathlibEvaluate[session, "
 Display Pascal's triangle modulo two:
 
 ```wl
-WithCleanup[session = StartMathlibSession[], ArrayPlot[Reverse[MathlibEvaluate[session, "(List.range 32).map (fun n => (List.range 32).map (fun k => Nat.choose n k % 2))"]], DataRange -> {{0, 31}, {0, 31}}, FrameTicks -> Automatic, FrameLabel -> {"Row n", "Column k"}], DeleteObject[session]]
+WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic"}], ArrayPlot[Reverse[MathlibEvaluate[session, "(List.range 32).map (fun n => (List.range 32).map (fun k => Nat.choose n k % 2))"]], DataRange -> {{0, 31}, {0, 31}}, FrameTicks -> Automatic, FrameLabel -> {"Row n", "Column k"}], DeleteObject[session]]
 ```
