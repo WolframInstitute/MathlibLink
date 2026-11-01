@@ -1,0 +1,13 @@
+Needs["WolframInstitute`MathlibLink`"]
+
+session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Sqrt", "Mathlib.Data.Nat.Totient", "Mathlib.Computability.PartrecCode"}];
+
+VerificationTest[MathlibCall[session, "Nat.sqrt", 1000], 31, TestID -> "generic-integer-root-call"]
+VerificationTest[MathlibCall[session, "Nat.totient", 100], 40, TestID -> "generic-number-theory-call"]
+VerificationTest[MathlibEvaluate[session, "(2 : Nat) ^ 100"], 2^100, TestID -> "large-value-lossless"]
+VerificationTest[MathlibCall[session, "Int.natAbs", -42], 42, TestID -> "negative-structured-argument"]
+VerificationTest[MathlibCall[session, "id", FromCharacterCode[{945, 10, 34, 92, 1}]], FromCharacterCode[{945, 10, 34, 92, 1}], TestID -> "unicode-and-control-string-roundtrip"]
+VerificationTest[MathlibCall[session, "List.reverse", {1, 2, 3}], {3, 2, 1}, TestID -> "generic-list-call"]
+VerificationTest[MathlibEvaluate[session, "(Nat.Partrec.Code.evaln 10 Nat.Partrec.Code.succ 5)"], 6, TestID -> "computability-code-evaluation"]
+
+DeleteObject[session];

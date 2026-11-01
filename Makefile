@@ -10,7 +10,12 @@ test:
 	$(WOLFRAMSCRIPT) -file scripts/test.wls
 
 test-mathlib:
-	$(WOLFRAMSCRIPT) -file scripts/test.wls mathlib
+	$(WOLFRAMSCRIPT) -file scripts/test.wls mathlib MathlibLink/Tests/Integration/Namespace.wlt
+	$(WOLFRAMSCRIPT) -file scripts/test.wls mathlib MathlibLink/Tests/Integration/Values.wlt
+	$(WOLFRAMSCRIPT) -file scripts/test.wls mathlib MathlibLink/Tests/Integration/Proof.wlt
+	$(WOLFRAMSCRIPT) -file scripts/test.wls mathlib MathlibLink/Tests/Integration/ProofRejection.wlt
+	$(WOLFRAMSCRIPT) -file scripts/test.wls mathlib MathlibLink/Tests/Integration/Objects.wlt
+	$(WOLFRAMSCRIPT) -file scripts/test.wls mathlib MathlibLink/Tests/Integration/Timeout.wlt
 
 notebooks:
 	$(WOLFRAMSCRIPT) -file scripts/docs.wls build
