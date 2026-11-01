@@ -1,10 +1,14 @@
 Begin["PacletDevelopment`"]
 
-repository = DirectoryName[DirectoryName[$InputFileName]];
+script = ExpandFileName[$InputFileName];
+repository = DirectoryName[DirectoryName[script]];
 name = FileNameTake[repository];
 paclet = FileNameJoin[{repository, name}];
-mode = If[Length[$ScriptCommandLine] > 1, Last[$ScriptCommandLine], "build"];
-If[! MemberQ[{"build", "check", "publish"}, mode], Print["Use build, check or publish."]; Exit[1]];
+mode = If[Length[$ScriptCommandLine] > 1, $ScriptCommandLine[[2]], "build"];
+If[! MemberQ[{"build", "check", "publish", "page"}, mode], Print["Use build, check or publish."]; Exit[1]];
+source = FileNameJoin[{repository, "docs", "en"}];
+definition = FileNameJoin[{paclet, "ResourceDefinition.md"}];
+documentationFiles = Sort[FileNames["*.md", source, Infinity]];
 PacletDirectoryLoad[paclet];
 If[PacletFind["WolframInstitute/PacletPage"] === {}, Print["Install WolframInstitute/PacletPage before building documentation."]; Exit[1]];
 Needs["WolframInstitute`PacletPage`"];
@@ -43,17 +47,52 @@ pageCall[function_String, arguments___] := If[
 	Symbol["WolframInstitute`PacletPage`" <> function][arguments]
 ];
 
+(* Imported Lean regions live until kernel exit. Evaluate each page in a fresh
+   licensed process; PacletPage then assembles its own verified page caches. *)
+buildPage[file_String] := Module[{worker, directories, program, result},
+	directories = DeleteDuplicates[Flatten[(#["Location"] & /@ PacletFind[#] &) /@ documentationDependencies]];
+	worker = CreateTemporary[];
+	program = "Scan[PacletDirectoryLoad, " <> ToString[directories, InputForm, CharacterEncoding -> "PrintableASCII"] <> "];\n" <>
+		"Block[{$ScriptCommandLine = " <> ToString[{script, "page", file}, InputForm, CharacterEncoding -> "PrintableASCII"] <>
+		"}, Get[" <> ToString[script, InputForm, CharacterEncoding -> "PrintableASCII"] <> "]];\nExit[1];\n";
+	Print["Evaluating ", FileNameTake[file]];
+	result = WithCleanup[
+		If[Export[worker, program, "Text", CharacterEncoding -> "UTF-8"] === $Failed, $Failed,
+			RunProcess[{"wolframscript", "-file", worker}]],
+		If[FileExistsQ[worker], DeleteFile[worker]]
+	];
+	If[! AssociationQ[result], Print["The page worker did not return a result."]; Exit[1]];
+	If[result["StandardOutput"] =!= "", Print[result["StandardOutput"]]];
+	If[result["StandardError"] =!= "", Print[result["StandardError"]]];
+	If[result["ExitCode"] =!= 0, Print["Page evaluation failed: ", file]; Exit[1]]
+];
+
 If[mode =!= "publish",
+	If[mode === "page",
+		If[Length[$ScriptCommandLine] =!= 3 || ! MemberQ[Append[documentationFiles, definition], Last[$ScriptCommandLine]],
+			Print["The page must be a documentation source in this checkout."]; Exit[1]
+		];
+		page = Last[$ScriptCommandLine],
+		Scan[buildPage, Append[documentationFiles, definition]]
+	];
 	build = pageCall["BuildPacletDocumentation", paclet,
-		"Source" -> FileNameJoin[{repository, "docs", "en"}],
-		"Definition" -> FileNameJoin[{paclet, "ResourceDefinition.md"}],
-		"Parallel" -> False, "Prune" -> True, "Dependencies" -> documentationDependencies,
+		"Source" -> source,
+		"Files" -> If[mode === "page", {If[page === definition, First[documentationFiles], page]}, All],
+		"Definition" -> If[mode === "page" && page =!= definition, None, definition],
+		"Parallel" -> False, "Prune" -> (mode =!= "page"), "Dependencies" -> documentationDependencies,
 		Sequence @@ documentationOptions
 	];
 	If[! AssociationQ[build] || Lookup[build, "Failed", {"Build"}] =!= {} || Lookup[build, "Unevaluated", <||>] =!= <||>,
 		Print[InputForm[build]]; Exit[1]
 	];
-	Print[Length[build["Notebooks"]], " documentation notebooks built."]
+	If[mode =!= "page" && Lookup[build, "Flagged", <||>] =!= <||>,
+		Print["Resolve the flagged documentation before building an archive."]; Print[InputForm[build["Flagged"]]]; Exit[1]
+	];
+	If[mode =!= "page" && Lookup[build, "Converted", {}] =!= {},
+		Print["Documentation changed during page evaluation. Run the build again."]; Exit[1]
+	];
+	Print[Length[build["Notebooks"]], " documentation notebooks built."];
+	If[mode === "page", Exit[0]]
 ];
 If[mode =!= "build",
 	distribution = FileNameJoin[{repository, "dist"}];
@@ -83,3 +122,5 @@ If[mode =!= "build",
 	CopyFile[archive, output, OverwriteTarget -> True];
 	Print["Archive: ", output]
 ];
+
+End[];
