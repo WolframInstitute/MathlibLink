@@ -10,9 +10,9 @@ Options[MathlibEvaluate] = {TimeConstraint -> 120, "ReturnType" -> Automatic}
 Options[MathlibCall] = Options[MathlibEvaluate]
 Options[ProveMathlib] = {TimeConstraint -> 120}
 
-mathlibQuoteName[name_String] := If[StringContainsQ[name, "«" | "»" | "\n" | "\r"],
+mathlibQuoteName[name_String] := If[StringContainsQ[name, "\:00ab" | "\:00bb" | "\n" | "\r"],
 	mathlibFailure["MathlibUnsupportedName", "Use MathlibExpression for this Lean identifier."],
-	StringRiffle[("«" <> # <> "»" &) /@ StringSplit[name, ".", All], "."]
+	StringRiffle[("\:00ab" <> # <> "\:00bb" &) /@ StringSplit[name, ".", All], "."]
 ]
 
 signedInteger[value_Integer] := If[value < 0, "-", ""] <> IntegerString[Abs[value]]

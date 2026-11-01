@@ -21,8 +21,9 @@ VerificationTest[
 	"MathlibUnsupportedValue", TestID -> "no-implicit-machine-real-rounding"
 ]
 VerificationTest[
-	WolframInstitute`MathlibLink`PackageScope`mathlibQuoteName["Nat.add_comm"],
-	"«Nat».«add_comm»", TestID -> "qualified-names-quoted"
+	ToCharacterCode[WolframInstitute`MathlibLink`PackageScope`mathlibQuoteName["Nat.add_comm"]],
+	Join[{171}, ToCharacterCode["Nat"], {187, 46, 171}, ToCharacterCode["add_comm"], {187}],
+	TestID -> "qualified-names-use-exact-unicode-delimiters"
 ]
 
 VerificationTest[
