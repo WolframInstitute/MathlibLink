@@ -139,7 +139,10 @@ jobs:
           WOLFRAM_CLOUD_USER: ${{ secrets.WOLFRAM_CLOUD_USER }}
           WOLFRAM_CLOUD_PASSWORD: ${{ secrets.WOLFRAM_CLOUD_PASSWORD }}
         run: |
-          test -n "$WOLFRAM_CLOUD_USER" && test -n "$WOLFRAM_CLOUD_PASSWORD" || { echo '::error::Configure WOLFRAM_CLOUD_USER and WOLFRAM_CLOUD_PASSWORD as repository secrets.'; exit 1; }
+          if [ -z "$WOLFRAM_CLOUD_USER" ] || [ -z "$WOLFRAM_CLOUD_PASSWORD" ]; then
+            echo '::error::Configure WOLFRAM_CLOUD_USER and WOLFRAM_CLOUD_PASSWORD as repository secrets.'
+            exit 1
+          fi
           # Wolfram reads these credentials from its environment, not shell expansion.
           # shellcheck disable=SC2016
           wolframscript -code '
