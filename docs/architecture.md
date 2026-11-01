@@ -29,9 +29,17 @@ reset or overwritten. Interrupted setup can be rerun at the same revision.
 
 Sessions borrow LeanLink's cached import environments. Closing one session
 invalidates its objects without freeing another session's shared environment.
-Compiled expression and proof environments are unique and are freed when the
-owning object or session closes. Cached imported modules remain under LeanLink's
+Compiled expressions and proofs have unique environment handles, released when
+the owning object or session closes. Cached imported modules remain under LeanLink's
 ownership. Session and object identifiers are valid only in the creating kernel.
+
+LeanLink 1.2.5 also retains native imported-module regions until the kernel exits;
+freeing an environment handle does not reclaim those regions. Its
+[environment loader](https://github.com/WolframInstitute/LeanLink/blob/8f9d43c5422b0514229a7fc3407a86b160f67423/Native/lib/LeanLink/EnvStore.lean#L49-L57)
+documents this lifetime. Prefer explicit module imports for focused work.
+Independent live-test phases run in fresh Wolfram kernels so repeated full
+imports do not accumulate across the suite. Full-default namespace, call and
+proof checks remain part of the live tests.
 
 MathlibEvaluate runs Lean's evaluator and copies supported JSON values.
 MathlibCall builds a Lean application from exact structured values and typed
