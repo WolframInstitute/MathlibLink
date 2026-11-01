@@ -9,12 +9,16 @@ exact computations and checked proofs through explicit sessions.
 
 Requires Wolfram Language 15.0 or later.
 
+[Documentation](https://www.wolframcloud.com/obj/wolframinstitute/MathlibLink/) ·
+[Wolfram resource](https://www.wolframcloud.com/obj/wolframinstitute/DeployedResources/Paclet/WolframInstitute/MathlibLink/) ·
+[Releases](https://github.com/WolframInstitute/MathlibLink/releases)
+
 ## Get started
 
-Load the source paclet from this repository:
+Install and load the paclet:
 
 ```wl
-PacletDirectoryLoad[FileNameJoin[{Directory[], "MathlibLink"}]]
+PacletInstall[ResourceObject["https://wolfr.am/1IuI3kKSs"]]
 Needs["WolframInstitute`MathlibLink`"]
 ```
 
@@ -25,7 +29,7 @@ InstallMathlib[]
 ```
 
 Setup reuses working Git, curl and elan installations. See
-[InstallMathlib](docs/en/ReferencePages/Symbols/InstallMathlib.md) for setup
+[InstallMathlib](https://www.wolframcloud.com/obj/wolframinstitute/MathlibLink/#ref/InstallMathlib) for setup
 options and progress reporting.
 
 Import binomial coefficients and compute a value:
@@ -66,20 +70,27 @@ and live verification results.
 Computable expressions can produce Wolfram values. Noncomputable definitions
 and proofs remain typed Lean objects. A finite computation and a
 kernel-checked theorem establish different things; see
-[values and proofs](docs/en/Tutorials/ValuesAndProofs.md).
+[values and proofs](https://www.wolframcloud.com/obj/wolframinstitute/MathlibLink/#tutorial/ValuesAndProofs).
 
 ## Documentation
 
-- [Getting started](docs/en/Tutorials/GettingStarted.md)
-- [Exact arithmetic patterns](docs/en/Tutorials/ArithmeticPatterns.md)
-- [Partial computations](docs/en/Tutorials/PartialComputations.md)
-- [Function guide](docs/en/Guides/MathlibLink.md)
+- [Getting started](https://www.wolframcloud.com/obj/wolframinstitute/MathlibLink/#tutorial/GettingStarted)
+- [Exact arithmetic patterns](https://www.wolframcloud.com/obj/wolframinstitute/MathlibLink/#tutorial/ArithmeticPatterns)
+- [Partial computations](https://www.wolframcloud.com/obj/wolframinstitute/MathlibLink/#tutorial/PartialComputations)
+- [Function guide](https://www.wolframcloud.com/obj/wolframinstitute/MathlibLink/#guide/MathlibLink)
 - [Upstream mathlib documentation](https://leanprover-community.github.io/mathlib4_docs/)
 
 The runtime pins Lean 4.35.0 and mathlib v4.35.0. The upstream documentation
 tracks current mathlib and may describe a newer release.
 
 ## Development
+
+Load the source paclet from this repository:
+
+```wl
+PacletDirectoryLoad[FileNameJoin[{Directory[], "MathlibLink"}]]
+Needs["WolframInstitute`MathlibLink`"]
+```
 
 | Command | Purpose |
 | --- | --- |
