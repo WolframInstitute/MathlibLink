@@ -20,6 +20,8 @@ directory; the paclet carries only the small version manifest. Setup downloads
 the complete cache to make all modules available and builds the Mathlib target.
 The upstream lake-manifest.json is preserved; setup never runs lake update,
 which would advance dependencies beyond the pinned release.
+Readiness imports the pinned Lean Init module through LeanLink to check native
+compatibility; it does not assume every newer LeanLink release uses the same ABI.
 Existing unrelated directories and other revisions are rejected rather than
 reset or overwritten. Interrupted setup can be rerun at the same revision.
 
@@ -49,3 +51,9 @@ arithmetic, algebra, analysis, topology and computability. Coverage does not
 claim that a theorem or noncomputable function can be evaluated numerically.
 PacletPage is the sole documentation and archive pipeline; publishing is a
 separate explicit action.
+
+Timeouts and interruptions close the owning session for every execution path,
+including retained expressions and proofs. LeanEvaluate bounds its subprocess.
+TimeConstrained around LeanLink elaboration and native kernel checking is a
+best-effort bound: an uninterruptible native call can return after the deadline.
+A timeout is an incomplete check and never a successful proof.

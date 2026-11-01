@@ -6,10 +6,23 @@ MathlibInstallation::usage = "MathlibInstallation[] gives the mathlib installati
 Options[InstallMathlib] = {"Directory" -> Automatic}
 Options[MathlibInstallation] = Options[InstallMathlib]
 
-mathlibInstallationReadyQ[directory_String] := And[
-	FileExistsQ[FileNameJoin[{directory, "mathliblink-installation.json"}]],
-	FileExistsQ[FileNameJoin[{directory, ".lake", "build", "lib", "lean", "Mathlib.olean"}]],
-	Quiet[Check[Import[FileNameJoin[{directory, "mathliblink-installation.json"}], "RawJSON"]["Revision"] === mathlibRuntime[]["MathlibRevision"], False]]
+mathlibInstallationReadyQ[directory_String] := Module[{marker, runtime = mathlibRuntime[], lean, manifest, git},
+	marker = FileNameJoin[{directory, "mathliblink-installation.json"}];
+	manifest = FileNameJoin[{directory, "lake-manifest.json"}];
+	lean = FileNameJoin[{mathlibLeanDirectory[], "bin", "lean" <> If[$OperatingSystem === "Windows", ".exe", ""]}];
+	git = mathlibExecutable["git"];
+	And[
+		StringQ[git],
+		AllTrue[{marker, manifest, lean, FileNameJoin[{directory, "lean-toolchain"}], FileNameJoin[{directory, ".lake", "build", "lib", "lean", "Mathlib.olean"}]}, FileExistsQ],
+		Quiet[Check[
+			With[{stamp = Import[marker, "RawJSON"]},
+				stamp["Revision"] === runtime["MathlibRevision"] &&
+				StringTrim[Import[FileNameJoin[{directory, "lean-toolchain"}], "Text"]] === runtime["LeanToolchain"] &&
+				stamp["ManifestSHA256"] === IntegerString[FileHash[manifest, "SHA256"], 16, 64]
+			], False]],
+		With[{revision = mathlibRun[{git, "rev-parse", "HEAD"}, directory]}, AssociationQ[revision] && revision["ExitCode"] === 0 && StringTrim[revision["StandardOutput"]] === runtime["MathlibRevision"]],
+		mathlibBridgeReadyQ[]
+	]
 ]
 
 MathlibInstallation[opts : OptionsPattern[]] := Module[{directory, runtime = mathlibRuntime[], status},
@@ -51,6 +64,10 @@ InstallMathlib[opts : OptionsPattern[]] := Module[{
 			Return[mathlibFailure["MathlibRevisionMismatch", "The downloaded tag does not match the pinned revision."]]
 		]
 	];
+	result = mathlibRun[{git, "diff", "--quiet", "HEAD"}, directory];
+	If[! AssociationQ[result] || result["ExitCode"] =!= 0,
+		Return[mathlibFailure["MathlibModifiedCheckout", "The checkout has local source changes. Choose another directory for the pinned release.", <|"Directory" -> directory|>]]
+	];
 	log = OpenWrite[FileNameJoin[{directory, "mathliblink-installation.log"}]];
 	commands = {
 		{elan, "toolchain", "install", runtime["LeanToolchain"]},
@@ -67,8 +84,8 @@ InstallMathlib[opts : OptionsPattern[]] := Module[{
 					<|"Command" -> command, "Log" -> File[FileNameJoin[{directory, "mathliblink-installation.log"}]], "Result" -> result|>]]
 			], {command, commands}
 		];
-		Export[FileNameJoin[{directory, "mathliblink-installation.json"}], <|"Revision" -> runtime["MathlibRevision"], "Toolchain" -> runtime["LeanToolchain"]|>, "RawJSON"];
-		If[mathlibInstallationReadyQ[directory], File[directory], mathlibFailure["MathlibInstallFailed", "The Mathlib module was not produced by the build."]],
+		Export[FileNameJoin[{directory, "mathliblink-installation.json"}], <|"Revision" -> runtime["MathlibRevision"], "Toolchain" -> runtime["LeanToolchain"], "ManifestSHA256" -> IntegerString[FileHash[FileNameJoin[{directory, "lake-manifest.json"}], "SHA256"], 16, 64]|>, "RawJSON"];
+		If[mathlibInstallationReadyQ[directory], File[directory], mathlibFailure["LeanLinkCompatibility", "Mathlib was built, but the compatible LeanLink runtime could not load. Restart the kernel with LeanLink 1.2.5 and the pinned Lean toolchain.", <|"Toolchain" -> runtime["LeanToolchain"], "URL" -> runtime["LeanLinkArchive"]|>]],
 		Close[log]
 	]
 ]

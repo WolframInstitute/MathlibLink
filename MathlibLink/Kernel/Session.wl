@@ -1,5 +1,5 @@
 PackageExported[{StartMathlibSession, MathlibSession, MathlibNames}]
-PackageScoped[{$mathlibSessions, mathlibSessionData, mathlibCloseSession, mathlibSessionSource}]
+PackageScoped[{$mathlibSessions, $mathlibEnvironments, mathlibSessionData, mathlibCloseSession, mathlibSessionSource}]
 
 StartMathlibSession::usage = "StartMathlibSession[] opens a session with all mathlib declarations. StartMathlibSession[\"Imports\" -> modules] imports selected modules."
 MathlibSession::usage = "MathlibSession[...] represents a mathlib session. session[\"property\"] gives a session property. DeleteObject[session] closes it."
@@ -7,8 +7,9 @@ MathlibNames::usage = "MathlibNames[session] lists available Lean declaration na
 Options[StartMathlibSession] = {"Directory" -> Automatic, "Imports" -> {"Mathlib"}}
 
 $mathlibSessions = <||>
+$mathlibEnvironments = <||>
 
-StartMathlibSession[opts : OptionsPattern[]] := Module[{directory, imports, loaded, environment, session},
+StartMathlibSession[opts : OptionsPattern[]] := Module[{directory, imports, loaded, environment, session, cacheKey, names},
 	If[! mathlibOptionsQ[StartMathlibSession, {opts}], Return[mathlibFailure["MathlibInvalidOption", "Unknown session option."]]];
 	directory = mathlibDirectory[OptionValue["Directory"]];
 	If[FailureQ[directory], Return[directory]];
@@ -17,11 +18,18 @@ StartMathlibSession[opts : OptionsPattern[]] := Module[{directory, imports, load
 	If[! mathlibInstallationReadyQ[directory], Return[mathlibFailure["MathlibSetupRequired", "Run InstallMathlib[] before starting a session.", <|"Directory" -> directory|>]]];
 	loaded = mathlibLoadLean[];
 	If[FailureQ[loaded], Return[loaded]];
-	environment = Quiet[Check[mathlibInvoke["LeanImport", "ProjectDir" -> directory, "Imports" -> DeleteDuplicates[imports], "IncludeInternal" -> True], $Failed]];
-	If[! MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]], Return[mathlibFailure["MathlibImportFailed", "Lean could not load the selected mathlib modules.", <|"Directory" -> directory, "Imports" -> imports|>]]];
+	imports = DeleteDuplicates[imports];
+	cacheKey = Hash[{directory, imports}, "SHA256", "HexString"];
+	If[KeyExistsQ[$mathlibEnvironments, cacheKey],
+		{environment, names} = Lookup[$mathlibEnvironments[cacheKey], {"Environment", "Names"}],
+		environment = Quiet[Check[mathlibInvoke["LeanImport", "ProjectDir" -> directory, "Imports" -> imports, "IncludeInternal" -> True], $Failed]];
+		If[! MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]], Return[mathlibFailure["MathlibImportFailed", "Lean could not load the selected mathlib modules.", <|"Directory" -> directory, "Imports" -> imports|>]]];
+		names = Sort[Keys[environment]];
+		AssociateTo[$mathlibEnvironments, cacheKey -> <|"Environment" -> environment, "Names" -> names|>]
+	];
 	session = MathlibSession[CreateUUID[]];
 	AssociateTo[$mathlibSessions, First[session] -> <|"Status" -> "Ready", "Directory" -> directory,
-		"Imports" -> DeleteDuplicates[imports], "Environment" -> environment, "Objects" -> {},
+		"Imports" -> DeleteDuplicates[imports], "Environment" -> environment, "Names" -> names, "Objects" -> {},
 		"DeclarationCount" -> Length[environment]|>];
 	session
 ]
@@ -54,8 +62,8 @@ mathlibCloseSession[session : MathlibSession[id_String]] := With[{state = Lookup
 MathlibSession /: DeleteObject[session_MathlibSession] := mathlibCloseSession[session]
 MathlibSession /: MakeBoxes[session : MathlibSession[id_String], form_] := With[{
 	status = Lookup[Lookup[$mathlibSessions, id, <||>], "Status", "Unavailable"]
-}, InterpretationBox[RowBox[{"MathlibSession", "[", ToBoxes[status, form], "]"}], session]]
+}, With[{boxes = ToBoxes[status, form]}, InterpretationBox[RowBox[{"MathlibSession", "[", boxes, "]"}], session]]]
 
 MathlibNames[session_MathlibSession, pattern_String : "*"] := With[{state = mathlibSessionData[session]},
-	If[FailureQ[state], state, Sort[Select[Keys[state["Environment"]], StringMatchQ[#, pattern] &]]]
+	If[FailureQ[state], state, Select[state["Names"], StringMatchQ[#, pattern] &]]
 ]

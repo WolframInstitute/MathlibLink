@@ -13,3 +13,44 @@ VerificationTest[
 		DeleteObject[MathlibSession["example"]]; {MathlibSession["example"]["Status"], MathlibNames[MathlibSession["example"]]["Tag"]}
 	], {"Closed", "MathlibInvalidSession"}, TestID -> "close-invalidates-session"
 ]
+
+VerificationTest[
+	Block[{
+		WolframInstitute`MathlibLink`PackageScope`$mathlibSessions = <|"timed" -> <|"Status" -> "Ready", "Directory" -> "local", "Imports" -> {"Mathlib"}, "DeclarationCount" -> 0, "Objects" -> {}|>|>,
+		WolframInstitute`MathlibLink`PackageScope`mathlibInvoke = Function[Null, Pause[0.5]; $Failed]
+	},
+		With[{result = MathlibEvaluate[MathlibSession["timed"], "1", "ReturnType" -> "Object", TimeConstraint -> 0.01]},
+			{result["Tag"], MathlibSession["timed"]["Status"]}
+		]
+	], {"MathlibTimedOut", "Closed"}, TestID -> "retained-expression-timeout-closes-session"
+]
+
+VerificationTest[
+	Block[{
+		WolframInstitute`MathlibLink`PackageScope`$mathlibSessions = <|"timed" -> <|"Status" -> "Ready", "Directory" -> "local", "Imports" -> {"Mathlib"}, "DeclarationCount" -> 0, "Objects" -> {}|>|>,
+		WolframInstitute`MathlibLink`PackageScope`mathlibInvoke = Function[Null, Pause[0.5]; $Failed]
+	},
+		With[{result = ProveMathlib[MathlibSession["timed"], "True", "by trivial", TimeConstraint -> 0.01]},
+			{result["Tag"], MathlibSession["timed"]["Status"]}
+		]
+	], {"MathlibTimedOut", "Closed"}, TestID -> "proof-elaboration-timeout-closes-session"
+]
+
+VerificationTest[
+	Block[{
+		WolframInstitute`MathlibLink`PackageScope`$mathlibSessions = <|"aborted" -> <|"Status" -> "Ready", "Directory" -> "local", "Imports" -> {"Mathlib"}, "DeclarationCount" -> 0, "Objects" -> {}|>|>,
+		WolframInstitute`MathlibLink`PackageScope`mathlibInvoke = (Abort[] &)
+	},
+		CheckAbort[ProveMathlib[MathlibSession["aborted"], "True", "by trivial"], Null];
+		MathlibSession["aborted"]["Status"]
+	], "Closed", TestID -> "proof-interruption-closes-session"
+]
+
+
+VerificationTest[
+	Block[{
+		WolframInstitute`MathlibLink`PackageScope`$mathlibSessions = <|"local" -> <|"Status" -> "Ready"|>|>,
+		WolframInstitute`MathlibLink`PackageScope`$mathlibObjects = <|"proof" -> <|"Session" -> "local", "Environment" -> "owned"|>|>
+	}, MathlibObject["proof"]["DocumentationURL"]], Missing["NoDocumentationURL"],
+	TestID -> "local-proof-does-not-invent-upstream-link"
+]

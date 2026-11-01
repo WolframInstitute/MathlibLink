@@ -1,4 +1,4 @@
-PackageScoped[{mathlibFailure, mathlibLoadLean, mathlibInvoke, mathlibOptionsQ, mathlibTimeQ, mathlibNameQ, mathlibModuleQ, mathlibDirectory, mathlibRuntime, mathlibExecutable, mathlibRun, mathlibVersionQ}]
+PackageScoped[{mathlibFailure, mathlibLoadLean, mathlibInvoke, mathlibOptionsQ, mathlibTimeQ, mathlibModuleQ, mathlibDirectory, mathlibRuntime, mathlibExecutable, mathlibRun, mathlibVersionQ, mathlibLeanDirectory, mathlibBridgeReadyQ}]
 
 mathlibFailure[tag_String, message_String, data_Association : <||>] := Failure[tag, Join[<|"MessageTemplate" -> message|>, data]]
 
@@ -9,7 +9,6 @@ mathlibDirectory[path_String] := ExpandFileName[path]
 mathlibDirectory[_] := mathlibFailure["MathlibInvalidOption", "Directory must be Automatic or a directory path."]
 
 mathlibTimeQ[value_] := value === Infinity || (NumberQ[value] && TrueQ[value > 0])
-mathlibNameQ[name_String] := StringMatchQ[name, RegularExpression["[\\p{L}_][\\p{L}\\p{N}_'.]*(?:\\.[\\p{L}_][\\p{L}\\p{N}_']*)*"]]
 mathlibModuleQ[name_String] := StringMatchQ[name, RegularExpression["[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*"]]
 mathlibOptionsQ[function_Symbol, options_List] := AllTrue[Flatten[options], MemberQ[First /@ Options[function], First[#]] &]
 mathlibVersionQ[installed_String, minimum_String] := With[{
@@ -40,3 +39,23 @@ mathlibRun[arguments_List, directory_String] := Quiet[Check[
 		ProcessEnvironment -> Association[GetEnvironment[], "MATHLIB_NO_CACHE_ON_UPDATE" -> "1"]],
 	$Failed
 ]]
+
+mathlibLeanDirectory[] := With[{
+	elan = Replace[Environment["ELAN_HOME"], Except[_String] -> FileNameJoin[{$HomeDirectory, ".elan"}]]
+}, FileNameJoin[{elan, "toolchains", StringReplace[mathlibRuntime[]["LeanToolchain"], {"/" -> "--", ":" -> "---"}]}]]
+
+$bridgeReady = <||>
+
+(* Loading the pinned Init module checks the olean/native ABI without invoking
+   elan or a compiler fallback. A successful native probe is local and reusable. *)
+mathlibBridgeReadyQ[] := Module[{loaded, version, handle},
+	loaded = mathlibLoadLean[];
+	If[FailureQ[loaded], Return[False]];
+	version = First[PacletFind["Wolfram/LeanLink"]]["Version"];
+	If[TrueQ[Lookup[$bridgeReady, version, False]], Return[True]];
+	handle = Quiet[Check[mathlibInvoke["LeanLoadEnvironment", {"Init"}, FileNameJoin[{mathlibLeanDirectory[], "lib", "lean"}]], $Failed]];
+	If[! IntegerQ[handle] || handle <= 0, Return[False]];
+	mathlibInvoke["LeanFreeEnvironment", handle];
+	AssociateTo[$bridgeReady, version -> True];
+	True
+]

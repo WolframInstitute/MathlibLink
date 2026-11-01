@@ -52,8 +52,16 @@ MathlibDeclaration[session_MathlibSession, name_String] := With[{state = mathlib
 
 (object_MathlibObject)["Properties"] := {"Name", "Kind", "Type", "TypeForm", "Term", "TermForm", "Axioms", "KernelCheck", "Module", "DocumentationURL", "Verified", "Properties"}
 (object_MathlibObject)[property : "Name" | "Kind" | "Type" | "TypeForm" | "Term" | "TermForm" | "Axioms" | "KernelCheck" | "Module"] :=
-	With[{data = mathlibObjectData[object]}, If[FailureQ[data], data, data["Term"][property]]]
-(object_MathlibObject)["DocumentationURL"] := With[{data = mathlibObjectData[object]}, If[FailureQ[data], data, mathlibDocumentationURL[data["Term"]]]]
+	With[{data = mathlibObjectData[object]}, If[FailureQ[data], data,
+		With[{value = Quiet[Check[data["Term"][property], $Failed]]},
+			If[value === $Failed, mathlibFailure["MathlibQueryFailed", "Lean could not query this declaration property.", <|"Property" -> property|>], value]
+		]
+	]]
+(object_MathlibObject)["DocumentationURL"] := With[{data = mathlibObjectData[object]}, Which[
+	FailureQ[data], data,
+	data["Environment"] === None, mathlibDocumentationURL[data["Term"]],
+	True, Missing["NoDocumentationURL"]
+]]
 (object_MathlibObject)["Verified"] := With[{data = mathlibObjectData[object]}, If[FailureQ[data], data, data["Verified"]]]
 (object_MathlibObject)[property_String] := Missing["UnknownProperty", property]
 
@@ -61,4 +69,11 @@ MathlibObject /: Normal[object_MathlibObject] := With[{data = mathlibObjectData[
 MathlibObject /: DeleteObject[MathlibObject[id_String]] := mathlibForgetObject[id]
 MathlibObject /: MakeBoxes[object : MathlibObject[id_String], form_] := With[{
 	data = Lookup[$mathlibObjects, id, None]
-}, InterpretationBox[RowBox[{"MathlibObject", "[", ToBoxes[If[AssociationQ[data], data["Term"]["Name"], "Released"], form], "]"}], object]]
+}, With[{label = Which[
+	! AssociationQ[data], "Released",
+	TrueQ[data["Verified"]], "Checked theorem",
+	data["Environment"] =!= None, "Typed expression",
+	True, data["Term"]["Name"]
+]}, With[{boxes = ToBoxes[label, form]},
+	InterpretationBox[RowBox[{"MathlibObject", "[", boxes, "]"}], object]
+]]]

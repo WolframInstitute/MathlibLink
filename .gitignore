@@ -6,6 +6,11 @@
 /MathlibLink/Resources/Runtime/
 /.lake/
 **/.lake/
+*.olean
+*.ilean
+*.olean.private
+*.olean.server
+*.ir
 *.paclet
 *.log
 *.tmp
