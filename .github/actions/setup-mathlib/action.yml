@@ -48,7 +48,7 @@ runs:
         installer="$RUNNER_TEMP/WolframEngine.dmg"
         mount="$RUNNER_TEMP/wolfram-engine-volume"
         app="$RUNNER_TEMP/Wolfram Engine.app"
-        curl --fail --location --retry 3 --output "$installer" \
+        curl --http1.1 --fail --location --retry 3 --retry-all-errors --output "$installer" \
           https://files.wolframcdn.com/packages/Homebrew/15.0.0.0/WolframEngine_15.0.0_MAC.dmg
         echo "ca3f0252b0df22d87d139dee1371a2a53be9784106b5974787dd024ef6ef959b  $installer" | shasum -a 256 --check
         mkdir -p "$mount"
