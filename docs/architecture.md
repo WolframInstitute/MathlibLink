@@ -14,7 +14,7 @@ Definitions, theorems, typeclasses and noncomputable declarations remain Lean
 objects when they cannot be copied as Wolfram values.
 
 Loading the paclet performs no installation or network access. InstallMathlib
-explicitly prepares elan and Git when needed, then installs the pinned Lean
+explicitly prepares elan, Git and curl when needed, then installs the pinned Lean
 toolchain, LeanLink and mathlib. Elan's global default is not changed. Mathlib
 lives in the user's application-data directory; the paclet carries only small
 version manifests. Setup downloads
@@ -75,8 +75,10 @@ Lake executable on PATH. Existing working Git is reused. On macOS, the Apple
 Git launcher is checked through xcode-select before it can start a developer
 tools prompt.
 
-If Git is unavailable, a checksum-pinned micromamba binary downloads an exact
-per-platform package lock from conda-forge. A private configuration confines
+If Git or a suitable HTTPS curl is unavailable, a checksum-pinned micromamba
+binary downloads an exact per-platform package lock from conda-forge. The tools
+use separate prefixes, so preparing one does not shadow a working copy of the
+other. A private configuration confines
 package caches and environment files to MathlibLink's tools directory; normal
 per-user environment registration is retained. Downloading packages and
 offline installation are separate stages. Incomplete owned prefixes can be

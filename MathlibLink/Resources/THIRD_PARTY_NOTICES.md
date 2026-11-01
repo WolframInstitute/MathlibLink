@@ -17,3 +17,8 @@ license notices in the prefix and package cache. The
 [conda-forge recipe](https://github.com/conda-forge/git-feedstock/tree/71aa484678c3d0372e48ad8053b1ce6411f20b80)
 records the packaged license terms and corresponding source locations.
 No third-party executable is included in the MathlibLink paclet archive.
+
+Setup can also prepare [curl 8.23.0](https://curl.se/docs/copyright.html) and
+its pinned conda-forge dependencies in a separate private prefix. Curl uses
+the curl license. Its packaged notices and dependency licenses remain in the
+installed prefix and package cache.

@@ -90,7 +90,7 @@ InstallMathlib[opts : OptionsPattern[]] := Module[{directory, progress, cancella
 	If[! AllTrue[{progress, cancellation}, MatchQ[#, _Function | _Symbol] && ! MemberQ[{True, False, None, Null}, #] &],
 		Return[mathlibFailure["MathlibInvalidOption", "ProgressFunction and CancellationFunction must be functions."]]
 	];
-	Catch[Block[{$installProgress = progress, $installCancellation = cancellation}, installMathlib[directory]], "MathlibInstall"]
+	Catch[Block[{$ContextPath = $ContextPath, $installProgress = progress, $installCancellation = cancellation}, installMathlib[directory]], "MathlibInstall"]
 ]
 
 installMathlib[directory_String] := Module[{
@@ -103,6 +103,7 @@ installMathlib[directory_String] := Module[{
 	];
 	git = mathlibEnsureGit[];
 	If[FailureQ[git], Return[git]];
+	With[{curl = mathlibEnsureCurl[]}, If[FailureQ[curl], Return[curl]]];
 	installed = PacletFind["Wolfram/LeanLink"];
 	If[installed === {} || ! mathlibVersionQ[First[installed]["Version"], runtime["LeanLinkMinimumVersion"]],
 		mathlibInstallStage["Installing..."];

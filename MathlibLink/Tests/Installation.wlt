@@ -55,10 +55,23 @@ VerificationTest[
 ]
 
 VerificationTest[
+	Module[{before = $ContextPath, result},
+		result = Block[{
+			WolframInstitute`MathlibLink`PackageScope`mathlibEnsureElan = (<|"Elan" -> "/tool", "Lake" -> "/tool"|> &),
+			WolframInstitute`MathlibLink`PackageScope`mathlibEnsureGit = ("/tool" &),
+			WolframInstitute`MathlibLink`PackageScope`mathlibEnsureCurl = ("/tool" &),
+			PacletFind = ({} &), PacletInstall = Function[Null, AppendTo[$ContextPath, "InstallerFixture`"]; $Failed]
+		}, InstallMathlib[]];
+		{result["Tag"], $ContextPath === before}
+	], {"LeanLinkInstallFailed", True}, TestID -> "dependency-installation-preserves-caller-context-path"
+]
+
+VerificationTest[
 	Block[{
 		WolframInstitute`MathlibLink`PackageScope`mathlibExecutable = ("/tool" &),
 		WolframInstitute`MathlibLink`PackageScope`mathlibEnsureElan = (<|"Elan" -> "/tool", "Lake" -> "/tool"|> &),
 		WolframInstitute`MathlibLink`PackageScope`mathlibEnsureGit = ("/tool" &),
+		WolframInstitute`MathlibLink`PackageScope`mathlibEnsureCurl = ("/tool" &),
 		WolframInstitute`MathlibLink`PackageScope`mathlibInstallationReadyQ = (True &),
 		PacletFind = ({PacletObject[<|"Name" -> "Wolfram/LeanLink", "Version" -> "1.2.5"|>]} &),
 		PacletInstall = (Throw["Unexpected installation"] &), StartProcess = (Throw["Unexpected process"] &)
@@ -76,6 +89,7 @@ VerificationTest[
 				WolframInstitute`MathlibLink`PackageScope`mathlibExecutable = ("/tool" &),
 				WolframInstitute`MathlibLink`PackageScope`mathlibEnsureElan = (<|"Elan" -> "/tool", "Lake" -> "/tool"|> &),
 				WolframInstitute`MathlibLink`PackageScope`mathlibEnsureGit = ("/tool" &),
+				WolframInstitute`MathlibLink`PackageScope`mathlibEnsureCurl = ("/tool" &),
 				WolframInstitute`MathlibLink`PackageScope`mathlibInstallationReadyQ = (False &),
 				WolframInstitute`MathlibLink`PackageScope`mathlibInstallRun =
 					(Throw[Failure["MathlibInstallCancelled", <||>], "MathlibInstall"] &),

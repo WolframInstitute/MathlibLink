@@ -20,9 +20,10 @@ RelatedTutorials: [GettingStarted]
 ## Details & Options
 
 - The runtime pins Lean 4.35.0 and mathlib commit `56a005855ea17e0b0958f73ec801ae140b0a1679`, corresponding to v4.35.0.
-- Setup reuses working elan and Git installations, or prepares them locally. It installs the compatible LeanLink release when needed, downloads the mathlib build cache and checks the resulting installation.
-- The automatic installers and Git packages are pinned by version and SHA256 checksum. They require no system package manager or administrator access.
-- Elan uses ELAN_HOME when set, otherwise the user's .elan directory. A private Git runtime lives under Wolfram's user application-data directory.
+- Setup reuses working elan, Git and curl installations, or prepares them locally. It installs the compatible LeanLink release when needed, downloads the mathlib build cache and checks the resulting installation.
+- The automatic installers and tool packages are pinned by version and SHA256 checksum. They require no system package manager or administrator access.
+- Elan uses ELAN_HOME when set, otherwise the user's .elan directory. Private Git and curl runtimes live in separate directories under Wolfram's user application-data directory.
+- Curl must support HTTPS and the download options used by mathlib's cache tool.
 - The complete mathlib import is installed, including declarations outside the examples in this paclet.
 - Installation does not change shell profiles, the process PATH or elan's global default toolchain.
 - Loading MathlibLink and checking [MathlibInstallation]() do not install software.

@@ -25,7 +25,7 @@ PacletObject[<|
 				"WolframInstitute`MathlibLink`MathlibObject"
 			}
 		},
-		{"Asset", "Root" -> "Resources", "Assets" -> {{"Runtime", "Runtime.json"}, {"GitBootstrap", "GitBootstrap.json"}, {"License", "LICENSE"}, {"Notices", "THIRD_PARTY_NOTICES.md"}}},
+		{"Asset", "Root" -> "Resources", "Assets" -> {{"Runtime", "Runtime.json"}, {"ToolBootstrap", "ToolBootstrap.json"}, {"License", "LICENSE"}, {"Notices", "THIRD_PARTY_NOTICES.md"}}},
 		{"Documentation", "Root" -> "Documentation", "Language" -> "English"},
 		{"Tests", "Root" -> "Tests", "Method" -> "Experimental-v1"}
 	}

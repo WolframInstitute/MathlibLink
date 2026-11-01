@@ -19,7 +19,7 @@ the entire imported namespace. A declaration does not need a separate
 Wolfram wrapper before it can be inspected or used in a Lean expression.
 
 Install the pinned runtime once, if it is not already present. Setup reuses
-working Git and elan installations and installs missing prerequisites in
+working Git, curl and elan installations and installs missing prerequisites in
 user directories:
 
 ```wl
@@ -34,7 +34,7 @@ MathlibInstallation[]
 ```
 
 The result separates overall readiness from the discovered tools.
-"Executables" gives the Elan, Lake and Git paths; "PathDirectories" gives
+"Executables" gives the Elan, Lake, Git and Curl paths; "PathDirectories" gives
 the runtime directories to prepend when starting a child process.
 
 Open the full library:

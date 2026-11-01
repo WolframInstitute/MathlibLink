@@ -30,17 +30,18 @@ mathlibToolsDirectory[] := FileNameJoin[{$UserBaseDirectory, "ApplicationData", 
 
 mathlibExecutable[name_String] := With[{suffix = If[$OperatingSystem === "Windows", ".exe", ""]},
 	SelectFirst[Join[
-		If[name === "git", {mathlibManagedGit[]}, {}],
+		If[MemberQ[{"git", "curl"}, name], {mathlibManagedTool[name]}, {}],
+		If[name === "curl", {mathlibBundledCurl[]}, {}],
 		If[MemberQ[{"elan", "lake"}, name], {FileNameJoin[{mathlibElanHome[], "bin", name <> suffix}]}, {}],
 		If[name === "lake", {}, FileNames[name <> suffix,
 			StringSplit[Replace[Environment["PATH"], Except[_String] -> ""], If[$OperatingSystem === "Windows", ";", ":"]]]]
 	], StringQ[#] && FileExistsQ[#] &, Missing["NotFound", name]]
 ]
 
-mathlibExecutables[] := AssociationThread[{"Elan", "Lake", "Git"}, mathlibExecutable /@ {"elan", "lake", "git"}]
+mathlibExecutables[] := AssociationThread[{"Elan", "Lake", "Git", "Curl"}, mathlibExecutable /@ {"elan", "lake", "git", "curl"}]
 mathlibPathDirectories[] := DeleteDuplicates[Join[
-	DirectoryName /@ Select[Values[mathlibExecutables[]], StringQ],
-	Replace[mathlibGitPathDirectories[], Except[_List] -> {}]
+	Replace[mathlibToolPathDirectories[], Except[_List] -> {}],
+	DirectoryName /@ Select[Values[mathlibExecutables[]], StringQ]
 ]]
 mathlibEnvironment[extra_Association : <||>] := Association[GetEnvironment[],
 	"PATH" -> StringRiffle[DeleteDuplicates[Join[mathlibPathDirectories[],

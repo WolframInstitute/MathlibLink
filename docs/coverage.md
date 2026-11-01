@@ -47,16 +47,17 @@ The 22 integration checks cover:
 
 The separate local tests cover installation metadata, exact argument encoding,
 option validation, unavailable objects, closure, interruption and timeout paths.
-All 50 local tests pass, including rejection of modified tracked mathlib sources.
+All 57 local tests pass, including rejection of modified tracked mathlib sources,
+preserved caller contexts and selection of private curl ahead of an older system copy.
 The maintained commands are `make check`, `make test` and `make test-mathlib`.
 Raw reports and experiment logs are generated under ignored `build/`.
 
 ## Local prerequisite bootstrap
 
-The Git bootstrap pins official micromamba 2.10.0 binaries and Git 2.56.0
-package locks for six operating-system/architecture combinations. All binary
+The local-tool bootstrap pins official micromamba 2.10.0 binaries, Git 2.56.0
+and curl 8.23.0 package locks for six operating-system/architecture combinations. All binary
 checksums were matched against the official release sidecars and release
-metadata. The 98 package records pin exact conda-forge URLs and SHA-256 hashes;
+metadata. The 193 package records pin exact conda-forge URLs and SHA-256 hashes;
 installation does not resolve a moving package set.
 
 On macOS ARM64, the installed 22-package inventory exactly matched its lock.
@@ -71,9 +72,17 @@ The other five platform manifests were resolved and checked, but their
 binaries were not executed on this macOS host. Installer regressions cover
 reuse of working Git, the macOS developer-tools launcher, cancellation during
 download and installation, and preservation of unrelated directories.
-On Linux, the upstream mathlib cache tool also requires a host `curl`
-executable. A missing executable is reported by the cache command in the
-installation result and log; bare Linux bootstrap was not tested here.
+The curl locks contain 95 package records in addition to the unchanged 98 Git
+records. On macOS ARM64, a separate 16-package curl prefix matched its exact
+lock and fetched the pinned Lean toolchain file over HTTPS with only its own
+bin directory on PATH. Installation downloaded first and linked offline.
+Git and curl use separate prefixes so installing one preserves a working copy
+of the other. Foreign-platform binaries have not been run on this host.
+
+The actual Wolfram curl helper also passed download, offline installation,
+HTTPS transfer, reuse and public executable-metadata checks. It installed no
+Git copy and preserved the existing Git executable, process environment and
+caller context. A ready installation still performs no downloads.
 
 Fresh Wolfram-kernel probes also exercised the actual Git and elan bootstrap
 helpers in isolated directories. Git passed HTTPS operation with a private-only
