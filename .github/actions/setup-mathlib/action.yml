@@ -1,0 +1,44 @@
+name: Prepare MathlibLink
+description: Require a licensed native Wolfram 15 runner and install the pinned local runtime.
+inputs:
+  system:
+    description: Expected Wolfram SystemID.
+    required: true
+  documentation:
+    description: Require the pinned PacletPage builder and a working front end.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Check native tools and Wolfram license
+      shell: bash
+      env:
+        MATHLIBLINK_SYSTEM: ${{ inputs.system }}
+        MATHLIBLINK_DOCUMENTATION: ${{ inputs.documentation }}
+      run: |
+        for tool in git make python3 wolframscript; do
+          command -v "$tool" >/dev/null || { echo "::error::Required runner tool is missing: $tool"; exit 1; }
+        done
+        python3 -c 'import sys; assert sys.version_info >= (3, 12), "Python 3.12 or later is required"'
+        # Wolfram symbols must reach the kernel literally.
+        # shellcheck disable=SC2016
+        wolframscript -code '
+          If[! TrueQ[15 <= $VersionNumber < 16] || $SystemID =!= Environment["MATHLIBLINK_SYSTEM"], Print[{$Version, $SystemID}]; Exit[1]];
+          Print[$Version, " | ", $SystemID];
+          If[Environment["MATHLIBLINK_DOCUMENTATION"] === "true",
+            If[PacletFind["WolframInstitute/PacletPage"] === {} || PacletObject["WolframInstitute/PacletPage"]["Version"] =!= "0.3.42", Print["Install WolframInstitute/PacletPage 0.3.42 on the documentation runner."]; Exit[1]];
+            If[! TrueQ[UsingFrontEnd[MatchQ[$FrontEnd, _FrontEndObject]]], Print["The documentation runner needs a working Wolfram front end."]; Exit[1]]
+          ];'
+
+    - name: Install the pinned mathlib runtime
+      shell: bash
+      run: |
+        # shellcheck disable=SC2016
+        wolframscript -code '
+          PacletDirectoryLoad[FileNameJoin[{Directory[], "MathlibLink"}]];
+          Needs["WolframInstitute`MathlibLink`"];
+          result = InstallMathlib[];
+          If[! MatchQ[result, File[_String]], Print[InputForm[result]]; Exit[1]];
+          status = MathlibInstallation[];
+          If[! AssociationQ[status] || status["Status"] =!= "Ready", Print[InputForm[status]]; Exit[1]];
+          Print[KeyTake[status, {"Status", "Toolchain", "Revision"}]];'

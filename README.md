@@ -1,5 +1,9 @@
 # MathlibLink
 
+[![CI](https://github.com/WolframInstitute/MathlibLink/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WolframInstitute/MathlibLink/actions/workflows/ci.yml)
+[![Release](https://github.com/WolframInstitute/MathlibLink/actions/workflows/release.yml/badge.svg)](https://github.com/WolframInstitute/MathlibLink/actions/workflows/release.yml)
+[![Publish](https://github.com/WolframInstitute/MathlibLink/actions/workflows/publish.yml/badge.svg)](https://github.com/WolframInstitute/MathlibLink/actions/workflows/publish.yml)
+
 MathlibLink connects Wolfram Language to [mathlib](https://leanprover-community.github.io/mathlib4_docs/),
 Lean's mathematics library. It provides declaration lookup, typed objects,
 exact computations and checked proofs through explicit sessions.
@@ -21,7 +25,7 @@ Prepare the pinned runtime once. Missing prerequisites are installed locally:
 InstallMathlib[]
 ```
 
-Setup reuses working Git and elan installations. See
+Setup reuses working Git, curl and elan installations. See
 [InstallMathlib](docs/en/ReferencePages/Symbols/InstallMathlib.md) for setup
 options and progress reporting.
 
@@ -87,4 +91,5 @@ tracks current mathlib and may describe a newer release.
 | `make check-publish` | Build and check the paclet archive |
 | `make publish` | Publish the paclet and documentation |
 
-See [GUIDE.md](GUIDE.md) for development conventions.
+See [GUIDE.md](GUIDE.md) for development conventions and
+[CI and releases](docs/workflows.md) for the three-platform workflow and publishing setup.
