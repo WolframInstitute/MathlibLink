@@ -34,9 +34,8 @@ jobs:
   native:
     name: Wolfram 15 (${{ matrix.system }})
     needs: [trusted-ref, repository]
-    runs-on:
-      group: mathliblink
-      labels: ${{ matrix.labels }}
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
@@ -44,12 +43,23 @@ jobs:
       matrix:
         include:
           - system: Linux-x86-64
-            labels: [self-hosted, linux, x64, wolfram-15]
+            runner: ubuntu-24.04
+            container:
+              image: wolframresearch/wolframengine:15.0@sha256:3ac08d6aaa33e6dccdda38d14cf8a7e5c22cc84d037a1a7562900914a487ef65
+              options: --user root
           - system: Windows-x86-64
-            labels: [self-hosted, windows, x64, wolfram-15]
+            runner: windows-2025
+            container: ''
           - system: MacOSX-ARM64
-            labels: [self-hosted, macOS, ARM64, wolfram-15]
+            runner: macos-15
+            container: ''
     steps:
+      - name: Install Linux container tools
+        if: runner.os == 'Linux'
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git make python3 ca-certificates curl tar xz-utils unzip zstd
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -81,11 +91,20 @@ jobs:
   paclet:
     name: Build and verify the paclet
     needs: native
-    runs-on:
-      group: mathliblink
-      labels: [self-hosted, macOS, ARM64, wolfram-15]
+    runs-on: ubuntu-24.04
+    container:
+      image: wolframresearch/wolframengine:15.0@sha256:3ac08d6aaa33e6dccdda38d14cf8a7e5c22cc84d037a1a7562900914a487ef65
+      options: --user root
+    env:
+      QT_QPA_PLATFORM: offscreen
     timeout-minutes: 180
     steps:
+      - name: Install Linux container tools
+        if: runner.os == 'Linux'
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git make python3 ca-certificates curl tar xz-utils unzip zstd
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -93,7 +112,7 @@ jobs:
 
       - uses: ./.github/actions/setup-mathlib
         with:
-          system: MacOSX-ARM64
+          system: Linux-x86-64
           documentation: 'true'
           entitlement: ${{ secrets.WOLFRAMSCRIPT_ENTITLEMENTID }}
 
@@ -165,9 +184,8 @@ jobs:
   installed:
     name: Installed paclet (${{ matrix.system }})
     needs: paclet
-    runs-on:
-      group: mathliblink
-      labels: ${{ matrix.labels }}
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -175,12 +193,23 @@ jobs:
       matrix:
         include:
           - system: Linux-x86-64
-            labels: [self-hosted, linux, x64, wolfram-15]
+            runner: ubuntu-24.04
+            container:
+              image: wolframresearch/wolframengine:15.0@sha256:3ac08d6aaa33e6dccdda38d14cf8a7e5c22cc84d037a1a7562900914a487ef65
+              options: --user root
           - system: Windows-x86-64
-            labels: [self-hosted, windows, x64, wolfram-15]
+            runner: windows-2025
+            container: ''
           - system: MacOSX-ARM64
-            labels: [self-hosted, macOS, ARM64, wolfram-15]
+            runner: macos-15
+            container: ''
     steps:
+      - name: Install Linux container tools
+        if: runner.os == 'Linux'
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git make python3 ca-certificates curl tar xz-utils unzip zstd
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

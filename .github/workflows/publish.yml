@@ -91,11 +91,19 @@ jobs:
   publish:
     name: Publish the same archive with PacletPage
     needs: verify
-    runs-on:
-      group: mathliblink
-      labels: [self-hosted, macOS, ARM64, wolfram-15]
+    runs-on: ubuntu-24.04
+    container:
+      image: wolframresearch/wolframengine:15.0@sha256:3ac08d6aaa33e6dccdda38d14cf8a7e5c22cc84d037a1a7562900914a487ef65
+      options: --user root
+    env:
+      QT_QPA_PLATFORM: offscreen
     timeout-minutes: 90
     steps:
+      - name: Install Linux container tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git make python3 ca-certificates curl tar xz-utils unzip zstd
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.verify.outputs.commit }}
@@ -104,7 +112,7 @@ jobs:
 
       - uses: ./.github/actions/setup-mathlib
         with:
-          system: MacOSX-ARM64
+          system: Linux-x86-64
           documentation: 'true'
           entitlement: ${{ secrets.WOLFRAMSCRIPT_ENTITLEMENTID }}
 

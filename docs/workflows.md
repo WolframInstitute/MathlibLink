@@ -16,52 +16,46 @@ run on the user's machine.
 
 Repository checks do not execute Wolfram tests. The CI badge reports the full
 native matrix. Missing licenses, tools, runtime downloads or failed tests fail
-their jobs; unavailable native runners leave jobs queued. These workflows need
-the runners below before a GitHub CI run can pass.
+their jobs. The workflows install their tools on GitHub-hosted runners; no
+custom runner registration is required.
 
-## Native runners
+## Hosted runners
 
-Create the organization runner group `mathliblink` with these labels:
+| Target | GitHub runner | Wolfram installation |
+| --- | --- | --- |
+| Linux x86-64 | `ubuntu-24.04` | Official `wolframresearch/wolframengine:15.0` container, pinned by digest |
+| Windows x86-64 | `windows-2025` | Wolfram's 15.0.0 installer, pinned by SHA-256 |
+| macOS ARM64 | `macos-15` | Wolfram's 15.0.0 disk image, pinned by SHA-256 |
 
-| Target | Labels |
+All three run the complete source, local and live mathlib checks, followed by
+smoke tests of the installed release archive. Windows and macOS execute native
+Wolfram kernels. Linux uses the official engine container, as PARILink and
+Ruliology do. The setup action checks the actual Wolfram version and system ID;
+it does not substitute another platform or skip unavailable tests.
+
+The native installer URLs and checksums come from the
+[Homebrew cask](https://formulae.brew.sh/cask/wolfram-engine) and
+[Microsoft's WinGet manifest](https://github.com/microsoft/winget-pkgs/blob/master/manifests/w/WolframResearch/WolframEngine/15.0.0/WolframResearch.WolframEngine.installer.yaml).
+Wolfram's [setup reference](https://github.com/WolframResearch/skills/blob/main/skills/wolfram-setup/references/get-wolfram-engine.md)
+uses these distribution channels. Windows installation uses the documented
+WinGet Burn switches with the manifest's installation directory. Python and
+GNU make are prepared automatically, and `InstallMathlib[]` prepares the
+pinned local Lean, LeanLink and mathlib runtime.
+
+PacletPage building and publishing run in the Linux container with its front
+end configured for offscreen rendering. Documentation tools are fetched from
+fixed source commits and installed within the job:
+
+| Tool | Pinned source |
 | --- | --- |
-| Linux x86-64 | `self-hosted`, `linux`, `x64`, `wolfram-15` |
-| Windows x86-64 | `self-hosted`, `windows`, `x64`, `wolfram-15` |
-| macOS ARM64 | `self-hosted`, `macOS`, `ARM64`, `wolfram-15` |
+| PacletPage 0.3.42 | [ad583493](https://github.com/WolframInstitute/PacletPage/commit/ad583493187194eeaa22d7e774a30ca475934aa4) |
+| MarkdownToNotebook | [c2b5703c](https://github.com/WolframInstitute/MarkdownToNotebook/commit/c2b5703cc813ef620dd744fca82353bfbfb6ca6f) |
+| WolframParser | [0697ceb7](https://github.com/sw1sh/WolframParser/commit/0697ceb787111be04f0d9f043d7674ee146c76c2) |
 
-Each runner needs Wolfram Language 15, `wolframscript`, Git, Bash,
-GNU make and Python 3.12 or later on `PATH`. On Windows, provide Bash through
-Git for Windows and ensure `make`, `python3` and `wolframscript` are visible in
-that shell. Keep the Actions runner current for the pinned Node-based actions.
-Allow at least 16 GB RAM and 30 GB free disk space for the full mathlib build.
-Use an existing runner license or the optional entitlement secret described
-below. The license must permit PacletPage's child kernels for the duration of
-the documentation job.
-
-The macOS runner also needs a working Wolfram front end and
-[WolframInstitute/PacletPage](https://github.com/WolframInstitute/PacletPage)
-**0.3.42**. The setup action verifies that exact
-version; provision it as the active PacletPage installation. Documentation
-conversion uses PacletPage's MarkdownToNotebook dependency. CI calls the
-existing `make` targets and `InstallMathlib[]`; it does not require a global
-Lean or mathlib installation. Use dedicated runner accounts without cloud
-publishing credentials. Runtime caches may persist in trusted runner images;
-every CI run still checks the pin and executes the tests.
-
-Use ephemeral runners and restrict the runner group to this repository and
-these workflow refs:
-
-```text
-WolframInstitute/MathlibLink/.github/workflows/ci.yml@refs/heads/main
-WolframInstitute/MathlibLink/.github/workflows/publish.yml@refs/heads/main
-```
-
-Public pull requests run only on GitHub-hosted runners with read-only tokens
-and no secrets. Do not enable native jobs for `pull_request_target`, fork code
-or arbitrary branches. Runner group restrictions enforce the trusted workflow
-boundary.
-See GitHub's [runner group access](https://docs.github.com/en/enterprise-cloud@latest/actions/how-tos/manage-runners/self-hosted-runners/manage-access)
-and [secure use guidance](https://docs.github.com/en/actions/reference/security/secure-use).
+Public pull requests run only repository checks, with read-only tokens and no
+secrets. Wolfram jobs and manual publishing require `main`. Keep this separation
+when changing the workflows; see GitHub's
+[secure use guidance](https://docs.github.com/en/actions/reference/security/secure-use).
 
 ## License and credentials
 
@@ -95,9 +89,10 @@ under `WolframInstitute`; `WOLFRAM_CLOUD_PASSWORD` is that account's password.
 Authenticate the GitHub CLI with `gh auth login` first if needed. No separate
 GitHub environment is required.
 
-The entitlement secret is optional. Without it, runners use their existing
-license. With it, [WolframScript](https://reference.wolfram.com/language/ref/program/wolframscript.html)
-licenses each native kernel. As in PARILink and Ruliology, `scripts/docs.wls`
+The hosted workflows require the entitlement secret and fail before installing
+Wolfram if it is missing. Local `make` commands can still use an existing
+license. [WolframScript](https://reference.wolfram.com/language/ref/program/wolframscript.html)
+uses the entitlement to license each native kernel. As in PARILink and Ruliology, `scripts/docs.wls`
 routes PacletPage's fresh `WolframKernel -script` processes through
 `wolframscript`, retaining the selected kernel executable and process options.
 The scoped adapter recognizes Linux/macOS executable paths and Windows `.exe`

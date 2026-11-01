@@ -10,6 +10,15 @@ If[PacletFind["WolframInstitute/PacletPage"] === {}, Print["Install WolframInsti
 Needs["WolframInstitute`PacletPage`"];
 If[! MemberQ[$Packages, "WolframInstitute`PacletPage`"], Exit[1]];
 Print["PacletPage ", PacletObject["WolframInstitute/PacletPage"]["Version"]];
+documentationTools = Environment["MATHLIBLINK_DOC_TOOLS"];
+documentationOptions = {};
+documentationDependencies = {"Wolfram/LeanLink"};
+If[StringQ[documentationTools] && documentationTools =!= "",
+	converter = FileNameJoin[{documentationTools, "MarkdownToNotebook", "MarkdownToNotebook.wl"}];
+	If[! FileExistsQ[converter], Print["The pinned MarkdownToNotebook source is missing."]; Exit[1]];
+	documentationOptions = {"Converter" -> converter};
+	AppendTo[documentationDependencies, "Wolfram/Parser"]
+];
 
 (* As in PARILink and Ruliology, only PacletPage's fresh kernel scripts use
    the entitlement-aware launcher. Other processes and local licenses are unchanged. *)
@@ -38,7 +47,8 @@ If[mode =!= "publish",
 	build = pageCall["BuildPacletDocumentation", paclet,
 		"Source" -> FileNameJoin[{repository, "docs", "en"}],
 		"Definition" -> FileNameJoin[{paclet, "ResourceDefinition.md"}],
-		"Parallel" -> False, "Prune" -> True, "Dependencies" -> {"Wolfram/LeanLink"}
+		"Parallel" -> False, "Prune" -> True, "Dependencies" -> documentationDependencies,
+		Sequence @@ documentationOptions
 	];
 	If[! AssociationQ[build] || Lookup[build, "Failed", {"Build"}] =!= {} || Lookup[build, "Unevaluated", <||>] =!= <||>,
 		Print[InputForm[build]]; Exit[1]

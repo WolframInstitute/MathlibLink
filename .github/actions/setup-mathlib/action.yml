@@ -1,5 +1,5 @@
 name: Prepare MathlibLink
-description: Check native Wolfram 15 with an entitlement or existing license and install the pinned runtime.
+description: Install Wolfram 15 on hosted runners, check its license and prepare the pinned mathlib runtime.
 inputs:
   system:
     description: Expected Wolfram SystemID.
@@ -8,39 +8,113 @@ inputs:
     description: Require the pinned PacletPage builder and a working front end.
     default: 'false'
   entitlement:
-    description: Optional on-demand license entitlement; otherwise use the runner license.
-    default: ''
+    description: On-demand license entitlement for the fresh hosted runner.
+    required: true
 runs:
   using: composite
   steps:
+    - name: Require the hosted-runner entitlement
+      shell: bash
+      env:
+        MATHLIBLINK_ENTITLEMENT: ${{ inputs.entitlement }}
+      run: |
+        test -n "$MATHLIBLINK_ENTITLEMENT" || { echo '::error::Set the WOLFRAMSCRIPT_ENTITLEMENTID repository secret; see docs/workflows.md.'; exit 1; }
+        [[ "$MATHLIBLINK_ENTITLEMENT" != *$'\n'* && "$MATHLIBLINK_ENTITLEMENT" != *$'\r'* ]] || { echo '::error::The entitlement ID must be one line.'; exit 1; }
+
+    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      if: runner.os != 'Linux'
+      with:
+        python-version: '3.12'
+
+    - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
+      id: msys
+      if: runner.os == 'Windows'
+      with:
+        release: false
+        install: make
+
+    - name: Add GNU make to the Windows PATH
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        MSYS_DIRECTORY: ${{ steps.msys.outputs.msys2-location }}
+      run: |
+        Join-Path $env:MSYS_DIRECTORY 'usr\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Install pinned Wolfram Engine for macOS
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        installer="$RUNNER_TEMP/WolframEngine.dmg"
+        mount="$RUNNER_TEMP/wolfram-engine-volume"
+        app="$RUNNER_TEMP/Wolfram Engine.app"
+        curl --fail --location --retry 3 --output "$installer" \
+          https://files.wolframcdn.com/packages/Homebrew/15.0.0.0/WolframEngine_15.0.0_MAC.dmg
+        echo "ca3f0252b0df22d87d139dee1371a2a53be9784106b5974787dd024ef6ef959b  $installer" | shasum -a 256 --check
+        mkdir -p "$mount"
+        hdiutil attach -readonly -nobrowse -mountpoint "$mount" "$installer"
+        trap 'hdiutil detach "$mount" >/dev/null' EXIT
+        ditto "$mount/Wolfram Engine.app" "$app"
+        launcher="$app/Contents/Resources/Wolfram Player.app/Contents/MacOS"
+        test -x "$launcher/wolframscript"
+        kernel=''
+        for candidate in "$app/Contents/MacOS/WolframKernel" "$launcher/WolframKernel"; do
+          if [ -x "$candidate" ]; then kernel="$candidate"; break; fi
+        done
+        test -n "$kernel" || { echo '::error::The installed app has no WolframKernel.'; exit 1; }
+        echo "$launcher" >> "$GITHUB_PATH"
+        echo "WOLFRAMSCRIPT_KERNELPATH=$kernel" >> "$GITHUB_ENV"
+        rm "$installer"
+
+    - name: Install pinned Wolfram Engine for Windows
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $archive = Join-Path $env:RUNNER_TEMP 'WolframEngine.zip'
+        $payload = Join-Path $env:RUNNER_TEMP 'wolfram-engine-installer'
+        $installRoot = Join-Path $env:ProgramFiles 'Wolfram Research\Wolfram Engine\15.0'
+        $log = Join-Path $env:RUNNER_TEMP 'wolfram-engine-install.log'
+        Invoke-WebRequest 'https://files.wolframcdn.com/packages/winget/15.0.0.0/WolframEngine_15.0.0_WIN.zip' -OutFile $archive
+        if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne '357CE8157A065355C113DBF50A9AC86A12F51E5CE63EEFD1E9C541BE05D026F4') { throw 'Wolfram installer checksum mismatch.' }
+        Expand-Archive $archive -DestinationPath $payload
+        $installer = Join-Path $payload 'M-WIN64-WolframEngine-15.0.0-13651831.exe'
+        $arguments = '/quiet /norestart /log "{0}" InstallFolder="{1}"' -f $log, $installRoot
+        $process = Start-Process -FilePath $installer -ArgumentList $arguments -Wait -PassThru
+        if ($process.ExitCode -notin @(0, 3010)) { throw "Wolfram installation failed with code $($process.ExitCode); see $log." }
+        $kernel = Join-Path $installRoot 'WolframKernel.exe'
+        $launcher = Join-Path $env:ProgramFiles 'Wolfram Research\WolframScript\wolframscript.exe'
+        if (!(Test-Path $kernel)) { throw "Missing native kernel: $kernel" }
+        if (!(Test-Path $launcher)) {
+          $launcher = Get-ChildItem $installRoot -Filter wolframscript.exe -Recurse | Select-Object -First 1 -ExpandProperty FullName
+        }
+        if (!$launcher -or !(Test-Path $launcher)) { throw 'The installer did not provide wolframscript.exe.' }
+        Split-Path $launcher | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        "WOLFRAMSCRIPT_KERNELPATH=$kernel" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        $python = (Get-Command python.exe).Source
+        $python3 = Join-Path (Split-Path $python) 'python3.exe'
+        if (!(Test-Path $python3)) { Copy-Item $python $python3 }
+        Remove-Item $archive
+        Remove-Item $payload -Recurse
+
     - name: Check native tools and Wolfram license
       shell: bash
       env:
         MATHLIBLINK_SYSTEM: ${{ inputs.system }}
-        MATHLIBLINK_DOCUMENTATION: ${{ inputs.documentation }}
         MATHLIBLINK_ENTITLEMENT: ${{ inputs.entitlement }}
       run: |
         for tool in git make python3 wolframscript; do
           command -v "$tool" >/dev/null || { echo "::error::Required runner tool is missing: $tool"; exit 1; }
         done
         python3 -c 'import sys; assert sys.version_info >= (3, 12), "Python 3.12 or later is required"'
-        if [ -z "$MATHLIBLINK_ENTITLEMENT" ]; then
-          echo 'Using the runner license; an optional WOLFRAMSCRIPT_ENTITLEMENTID secret can license this job.'
-        else
-          [[ "$MATHLIBLINK_ENTITLEMENT" != *$'\n'* && "$MATHLIBLINK_ENTITLEMENT" != *$'\r'* ]] || { echo '::error::The entitlement ID must be one line.'; exit 1; }
-          export WOLFRAMSCRIPT_ENTITLEMENTID="$MATHLIBLINK_ENTITLEMENT"
-          printf 'WOLFRAMSCRIPT_ENTITLEMENTID=%s\n' "$WOLFRAMSCRIPT_ENTITLEMENTID" >> "$GITHUB_ENV"
-          echo 'Using the configured on-demand entitlement.'
-        fi
+        export WOLFRAMSCRIPT_ENTITLEMENTID="$MATHLIBLINK_ENTITLEMENT"
+        printf 'WOLFRAMSCRIPT_ENTITLEMENTID=%s\n' "$WOLFRAMSCRIPT_ENTITLEMENTID" >> "$GITHUB_ENV"
+        echo 'Using the configured on-demand entitlement.'
         # Wolfram symbols must reach the kernel literally.
         # shellcheck disable=SC2016
         wolframscript -code '
           If[! TrueQ[15 <= $VersionNumber < 16] || $SystemID =!= Environment["MATHLIBLINK_SYSTEM"], Print[{$Version, $SystemID}]; Exit[1]];
-          Print[$Version, " | ", $SystemID];
-          If[Environment["MATHLIBLINK_DOCUMENTATION"] === "true",
-            If[PacletFind["WolframInstitute/PacletPage"] === {} || PacletObject["WolframInstitute/PacletPage"]["Version"] =!= "0.3.42", Print["Install WolframInstitute/PacletPage 0.3.42 on the documentation runner."]; Exit[1]];
-            If[! TrueQ[UsingFrontEnd[MatchQ[$FrontEnd, _FrontEndObject]]], Print["The documentation runner needs a working Wolfram front end."]; Exit[1]]
-          ];'
+          Print[$Version, " | ", $SystemID];'
 
     - name: Install the pinned mathlib runtime
       shell: bash
@@ -54,3 +128,40 @@ runs:
           status = MathlibInstallation[];
           If[! AssociationQ[status] || status["Status"] =!= "Ready", Print[InputForm[status]]; Exit[1]];
           Print[KeyTake[status, {"Status", "Toolchain", "Revision"}]];'
+
+    - name: Install pinned documentation tools
+      if: inputs.documentation == 'true'
+      shell: bash
+      run: |
+        root="$RUNNER_TEMP/mathlib-doc-tools"
+        mkdir -p "$root/sources" "$root/archives"
+        fetch() {
+          local name="$1" url="$2" revision="$3" checkout="$root/$1"
+          git init --quiet "$checkout"
+          git -C "$checkout" remote add origin "$url"
+          git -C "$checkout" fetch --quiet --depth 1 origin "$revision"
+          git -C "$checkout" checkout --quiet --detach FETCH_HEAD
+          test "$(git -C "$checkout" rev-parse HEAD)" = "$revision"
+          mkdir -p "$root/sources/$name"
+          git -C "$checkout" archive HEAD | tar -x -C "$root/sources/$name"
+        }
+        fetch PacletPage https://github.com/WolframInstitute/PacletPage.git ad583493187194eeaa22d7e774a30ca475934aa4
+        fetch MarkdownToNotebook https://github.com/WolframInstitute/MarkdownToNotebook.git c2b5703cc813ef620dd744fca82353bfbfb6ca6f
+        fetch WolframParser https://github.com/sw1sh/WolframParser.git 0697ceb787111be04f0d9f043d7674ee146c76c2
+        export MATHLIBLINK_DOC_TOOLS="$root/sources"
+        echo "MATHLIBLINK_DOC_TOOLS=$MATHLIBLINK_DOC_TOOLS" >> "$GITHUB_ENV"
+        # shellcheck disable=SC2016
+        wolframscript -code '
+          root = Environment["MATHLIBLINK_DOC_TOOLS"];
+          output = FileNameJoin[{DirectoryName[root], "archives"}];
+          Do[
+            archive = CreatePacletArchive[directory, output];
+            If[! StringQ[archive] || ! FileExistsQ[archive], Print["Could not pack a documentation dependency."]; Exit[1]];
+            installed = PacletInstall[archive, ForceVersionInstall -> True];
+            If[! MatchQ[installed, _PacletObject], Print[InputForm[installed]]; Exit[1]],
+            {directory, {FileNameJoin[{root, "WolframParser", "Parser"}], FileNameJoin[{root, "PacletPage"}]}}
+          ];
+          If[PacletObject["WolframInstitute/PacletPage"]["Version"] =!= "0.3.42", Print["Unexpected PacletPage version."]; Exit[1]];
+          Needs["WolframInstitute`PacletPage`"];
+          Needs["Wolfram`Parser`"];
+          If[! TrueQ[UsingFrontEnd[MatchQ[$FrontEnd, _FrontEndObject]]], Print["The documentation runner needs a working front end."]; Exit[1]];'
