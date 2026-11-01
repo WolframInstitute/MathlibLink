@@ -58,7 +58,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git make python3 ca-certificates curl tar xz-utils unzip zstd
+          apt-get install -y --no-install-recommends git make python3 ca-certificates curl tar xz-utils unzip zstd procps
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -69,6 +69,22 @@ jobs:
           system: ${{ matrix.system }}
           entitlement: ${{ secrets.WOLFRAMSCRIPT_ENTITLEMENTID }}
 
+      - name: Record Linux resources before tests
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p build/ci
+          {
+            free -m
+            df -h .
+            for metric in memory.current memory.peak memory.max memory.events; do
+              if [ -r "/sys/fs/cgroup/$metric" ]; then
+                printf '%s:\n' "$metric"
+                cat "/sys/fs/cgroup/$metric"
+              fi
+            done
+            ps -eo pid,ppid,comm,rss --sort=-rss | sed -n '1,15p'
+          } | tee build/ci/resources-before.log
+
       - name: Check sources and run all local and live tests
         run: |
           set -o pipefail
@@ -76,6 +92,22 @@ jobs:
           make check 2>&1 | tee build/ci/check.log
           make test 2>&1 | tee build/ci/local.log
           make test-mathlib 2>&1 | tee build/ci/mathlib.log
+
+      - name: Record Linux resources after tests
+        if: always() && runner.os == 'Linux'
+        run: |
+          mkdir -p build/ci
+          {
+            free -m
+            df -h .
+            for metric in memory.current memory.peak memory.max memory.events; do
+              if [ -r "/sys/fs/cgroup/$metric" ]; then
+                printf '%s:\n' "$metric"
+                cat "/sys/fs/cgroup/$metric"
+              fi
+            done
+            ps -eo pid,ppid,comm,rss --sort=-rss | sed -n '1,15p'
+          } | tee build/ci/resources-after.log
 
       - name: Preserve test results
         if: always()
