@@ -47,6 +47,7 @@ The 22 integration checks cover:
 
 The separate local tests cover installation metadata, exact argument encoding,
 option validation, unavailable objects, closure, interruption and timeout paths.
+All 50 local tests pass, including rejection of modified tracked mathlib sources.
 The maintained commands are `make check`, `make test` and `make test-mathlib`.
 Raw reports and experiment logs are generated under ignored `build/`.
 
@@ -70,6 +71,9 @@ The other five platform manifests were resolved and checked, but their
 binaries were not executed on this macOS host. Installer regressions cover
 reuse of working Git, the macOS developer-tools launcher, cancellation during
 download and installation, and preservation of unrelated directories.
+On Linux, the upstream mathlib cache tool also requires a host `curl`
+executable. A missing executable is reported by the cache command in the
+installation result and log; bare Linux bootstrap was not tested here.
 
 Fresh Wolfram-kernel probes also exercised the actual Git and elan bootstrap
 helpers in isolated directories. Git passed HTTPS operation with a private-only
@@ -91,14 +95,24 @@ was independently reproved by MathlibLink.
 
 ## Documentation checks
 
-The initial 16-page documentation build contained 122 executable inputs. Every input was
-checked against the pinned runtime; exact comparisons returned True, and the
-intentional admitted proofs were rejected. The resource definition adds two
-verified examples. All 17 notebooks match their authored input expressions
-and expected output counts, with no message cells or Code-style cells.
+The 16 documentation pages contain 123 executable inputs. The initial 122
+were checked against the pinned runtime; exact comparisons returned True,
+and the intentional admitted proofs were rejected. After the local installer
+update, all 20 inputs on its three affected pages were freshly evaluated,
+including the new cancellation example. The other 103 inputs retained their
+verified outputs from commit `af7e39b`. Their Markdown, input expressions,
+output counts and the evaluation, object and session source files were
+checked against that baseline before reuse.
+
+The resource definition adds two verified examples. All 17 notebooks match
+their authored input expressions and expected output counts, with no message
+cells or Code-style cells. Fresh metadata includes the executable paths;
+cancellation gives its expected diagnostic. The refreshed tutorial's integer
+square root and binomial row were checked exactly.
 
 Nine computed figures and the session/object displays were rendered and
-inspected in light and dark appearances. The final proof tutorial was
+inspected in light and dark appearances. The refreshed setup metadata and
+binomial plot passed the same visual check. The final proof tutorial was
 assembled through the converter's evaluator interface from its recorded
 outputs after license interruptions; every supplied input had to match its
 verified source exactly. Raw outputs, provenance and notebook audits are

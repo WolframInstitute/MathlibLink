@@ -23,6 +23,7 @@ The upstream lake-manifest.json is preserved; setup never runs lake update,
 which would advance dependencies beyond the pinned release.
 Readiness imports the pinned Lean Init module through LeanLink to check native
 compatibility; it does not assume every newer LeanLink release uses the same ABI.
+It also checks the checkout revision, manifest checksum and tracked-source diff.
 Existing unrelated directories and other revisions are rejected rather than
 reset or overwritten. Interrupted setup can be rerun at the same revision.
 

@@ -10,6 +10,35 @@ VerificationTest[
 ]
 
 VerificationTest[
+	Module[{temporary = CreateDirectory[], directory, lean, manifest, runtime, result},
+		directory = FileNameJoin[{temporary, "mathlib"}];
+		lean = FileNameJoin[{temporary, "lean"}];
+		runtime = <|"LeanToolchain" -> "leanprover/lean4:v4.35.0", "MathlibRevision" -> "fixture"|>;
+		CreateDirectory[FileNameJoin[{directory, ".lake", "build", "lib", "lean"}], CreateIntermediateDirectories -> True];
+		CreateDirectory[FileNameJoin[{lean, "bin"}], CreateIntermediateDirectories -> True];
+		CreateFile[FileNameJoin[{directory, ".lake", "build", "lib", "lean", "Mathlib.olean"}]];
+		CreateFile[FileNameJoin[{lean, "bin", "lean" <> If[$OperatingSystem === "Windows", ".exe", ""]}]];
+		Export[FileNameJoin[{directory, "lean-toolchain"}], runtime["LeanToolchain"], "Text"];
+		manifest = Export[FileNameJoin[{directory, "lake-manifest.json"}], <||>, "RawJSON"];
+		Export[FileNameJoin[{directory, "mathliblink-installation.json"}],
+			<|"Revision" -> "fixture", "ManifestSHA256" -> IntegerString[FileHash[manifest, "SHA256"], 16, 64]|>, "RawJSON"];
+		WithCleanup[
+			result = Block[{
+				WolframInstitute`MathlibLink`PackageScope`mathlibRuntime = (runtime &),
+				WolframInstitute`MathlibLink`PackageScope`mathlibLeanDirectory = (lean &),
+				WolframInstitute`MathlibLink`PackageScope`mathlibExecutable = ("git" &),
+				WolframInstitute`MathlibLink`PackageScope`mathlibGitWorkingQ = (True &),
+				WolframInstitute`MathlibLink`PackageScope`mathlibRun = Function[{arguments, workingDirectory},
+					If[MemberQ[arguments, "diff"], <|"ExitCode" -> 1|>, <|"ExitCode" -> 0, "StandardOutput" -> "fixture\n"|>]],
+				WolframInstitute`MathlibLink`PackageScope`mathlibBridgeReadyQ = (Throw["Unexpected native probe"] &)
+			}, WolframInstitute`MathlibLink`PackageScope`mathlibInstallationReadyQ[directory]],
+			DeleteDirectory[temporary, DeleteContents -> True]
+		];
+		result
+	], False, TestID -> "modified-tracked-source-is-not-ready-despite-matching-pins-and-cache"
+]
+
+VerificationTest[
 	Block[{WolframInstitute`MathlibLink`PackageScope`mathlibExecutable = (Throw["Unexpected process lookup"] &)},
 		InstallMathlib["CancellationFunction" -> (True &)]["Tag"]
 	], "MathlibInstallCancelled", TestID -> "cancellation-before-setup-starts-no-work"

@@ -66,6 +66,7 @@ mathlibInstallationReadyQ[directory_String] := Module[{marker, runtime = mathlib
 			], False]],
 		mathlibGitWorkingQ[git],
 		With[{revision = mathlibRun[{git, "rev-parse", "HEAD"}, directory]}, AssociationQ[revision] && revision["ExitCode"] === 0 && StringTrim[revision["StandardOutput"]] === runtime["MathlibRevision"]],
+		With[{changes = mathlibRun[{git, "diff", "--quiet", "HEAD"}, directory]}, AssociationQ[changes] && changes["ExitCode"] === 0],
 		mathlibBridgeReadyQ[]
 	]
 ]
