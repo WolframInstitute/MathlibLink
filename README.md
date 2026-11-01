@@ -29,17 +29,17 @@ Setup reuses working Git, curl and elan installations. See
 [InstallMathlib](docs/en/ReferencePages/Symbols/InstallMathlib.md) for setup
 options and progress reporting.
 
-Open a session and compute a binomial coefficient:
+Import binomial coefficients and compute a value:
 
 ```wl
-session = StartMathlibSession[]
+session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic"}]
 MathlibCall[session, "Nat.choose", 10, 4]
 ```
 
 Inspect a theorem:
 
 ```wl
-MathlibDeclaration[session, "mul_comm"]["TypeForm"]
+MathlibDeclaration[session, "Nat.add_comm"]["TypeForm"]
 ```
 
 Prove an identity:

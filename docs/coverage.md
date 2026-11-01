@@ -47,10 +47,16 @@ The 22 integration checks cover:
 
 The separate local tests cover installation metadata, exact argument encoding,
 option validation, unavailable objects, closure, interruption and timeout paths.
-All 58 local tests pass, including rejection of modified tracked mathlib sources,
+All 59 local tests pass on macOS ARM64, including rejection of modified tracked mathlib sources,
 preserved caller contexts and selection of private or existing curl ahead of an
-older copy beside Git. The 22 live checks were repeated successfully after the
-automatic curl bootstrap was added.
+older copy beside Git. All 22 live checks pass in six fresh Wolfram processes.
+The complete default namespace, a default-session call and a default-session
+checked theorem remain covered. Negative proof checks require the specific
+rejection and a usable session, so a timeout cannot satisfy those assertions.
+
+Fresh processes prevent native imported-module regions from accumulating
+between independent phases; see [the memory lifetime](architecture.md).
+Identifier encoding was also checked after loading the package under Latin-1.
 The maintained commands are `make check`, `make test` and `make test-mathlib`.
 Raw reports and experiment logs are generated under ignored `build/`.
 
@@ -106,30 +112,26 @@ was independently reproved by MathlibLink.
 
 ## Documentation checks
 
-The 16 documentation pages contain 123 executable inputs. The initial 122
-were checked against the pinned runtime; exact comparisons returned True,
-and the intentional admitted proofs were rejected. After the local installer
-update, all 20 inputs on its three affected pages were freshly evaluated,
-including the new cancellation example. The other 103 inputs retained their
-verified outputs from commit `af7e39b`. Their Markdown, input expressions,
-output counts and the evaluation, object and session source files were
-checked against that baseline before reuse.
+The 16 documentation pages and resource definition contain 132 authored inputs.
+All 128 evaluable inputs were freshly evaluated; four installation examples
+explicitly use `eval: false`. The 17 generated notebooks match their Markdown
+inputs and contain 110 output groups, with no message cells, Code-style cells,
+flagged pages or unexpected failures. Exact tutorial arithmetic was checked
+independently. Nine figures were rendered and inspected in light and dark
+appearances.
 
-The resource definition adds two verified examples. All 17 notebooks match
-their authored input expressions and expected output counts, with no message
-cells or Code-style cells. Fresh metadata includes the executable paths;
-cancellation gives its expected diagnostic. The refreshed tutorial's integer
-square root and binomial row were checked exactly.
+Each page is evaluated in a fresh Wolfram process through PacletPage. Focused
+examples import the modules they use; the default-session and full-namespace
+examples remain. The final build validates and assembles PacletPage's page
+caches before producing the archive.
 
-After curl setup was added, the same three pages were rebuilt with all 20
-inputs freshly evaluated. The other 13 pages retained their audited outputs
-only after unchanged-source, exact-input and output-count checks. The updated
-installation metadata includes Curl and passed light and dark rendering checks.
+Uncached macOS measurements sampled the physical footprint of each complete
+owned process tree every 0.5 seconds using `proc_pid_rusage`, including Lean
+subprocesses. Peaks were 10.85 GiB for Values and Proofs, 8.65 GiB for
+ProveMathlib and 4.02 GiB for Getting Started. These are local measurements,
+not substitutes for the hosted platform checks. RSS alone can understate
+memory retained in compressed or swapped native allocations.
 
-Nine computed figures and the session/object displays were rendered and
-inspected in light and dark appearances. The refreshed setup metadata and
-binomial plot passed the same visual check. The final proof tutorial was
-assembled through the converter's evaluator interface from its recorded
-outputs after license interruptions; every supplied input had to match its
-verified source exactly. Raw outputs, provenance and notebook audits are
-retained under build/.
+Source hashes, actual outputs, notebook audits, renders and memory samples are
+retained under ignored `build/`. The [CI workflow](workflows.md) checks the
+native platforms and the installed release archive separately.
