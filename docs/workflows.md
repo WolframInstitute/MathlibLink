@@ -42,6 +42,7 @@ checks its version and Wolfram Research's Apple Developer ID signature before us
 the bundled command-line executables. The app stays in the runner's temporary
 directory. Windows uses the URL, checksum and silent installation switches in
 [Microsoft's WinGet manifest](https://github.com/microsoft/winget-pkgs/blob/master/manifests/w/WolframResearch/WolframEngine/15.0.0/WolframResearch.WolframEngine.installer.yaml).
+Installer transfers use bounded retries and resume partial downloads.
 Python and GNU make are prepared automatically, and `InstallMathlib[]`
 prepares the pinned local Lean, LeanLink and mathlib runtime.
 

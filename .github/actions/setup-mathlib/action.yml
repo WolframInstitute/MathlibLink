@@ -106,6 +106,21 @@ runs:
         echo "WOLFRAMSCRIPT_KERNELPATH=$kernel" >> "$GITHUB_ENV"
         rm "$installer"
 
+    - name: Download pinned Wolfram Engine for Windows
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        installer="$RUNNER_TEMP/WolframEngine.zip"
+        for attempt in 1 2 3 4; do
+          if curl --http1.1 --fail --location --continue-at - --connect-timeout 30 --max-time 600 --output "$installer" \
+            'https://files.wolframcdn.com/packages/winget/15.0.0.0/WolframEngine_15.0.0_WIN.zip'; then
+            break
+          fi
+          if [ "$attempt" -eq 4 ]; then exit 1; fi
+          sleep "$attempt"
+        done
+        echo "357ce8157a065355c113dbf50a9ac86a12f51e5ce63eefd1e9c541be05d026f4  $installer" | sha256sum -c
+
     - name: Install pinned Wolfram Engine for Windows
       if: runner.os == 'Windows'
       shell: pwsh
@@ -115,8 +130,6 @@ runs:
         $payload = Join-Path $env:RUNNER_TEMP 'wolfram-engine-installer'
         $installRoot = Join-Path $env:ProgramFiles 'Wolfram Research\Wolfram Engine\15.0'
         $log = Join-Path $env:RUNNER_TEMP 'wolfram-engine-install.log'
-        Invoke-WebRequest 'https://files.wolframcdn.com/packages/winget/15.0.0.0/WolframEngine_15.0.0_WIN.zip' -OutFile $archive
-        if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne '357CE8157A065355C113DBF50A9AC86A12F51E5CE63EEFD1E9C541BE05D026F4') { throw 'Wolfram installer checksum mismatch.' }
         Expand-Archive $archive -DestinationPath $payload
         $installer = Join-Path $payload 'M-WIN64-WolframEngine-15.0.0-13651831.exe'
         $arguments = '/quiet /norestart /log "{0}" InstallFolder="{1}"' -f $log, $installRoot
