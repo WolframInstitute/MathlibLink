@@ -18,8 +18,9 @@ number theory, topology and computability. MathlibLink uses one interface for
 the entire imported namespace. A declaration does not need a separate
 Wolfram wrapper before it can be inspected or used in a Lean expression.
 
-Setup requires [elan](https://lean-lang.org/install/) and Git. Install the
-pinned runtime once, if it is not already present:
+Install the pinned runtime once, if it is not already present. Setup reuses
+working Git and elan installations and installs missing prerequisites in
+user directories:
 
 ```wl
 #| eval: false
@@ -31,6 +32,10 @@ Inspect the local installation:
 ```wl
 MathlibInstallation[]
 ```
+
+The result separates overall readiness from the discovered tools.
+"Executables" gives the Elan, Lake and Git paths; "PathDirectories" gives
+the runtime directories to prepend when starting a child process.
 
 Open the full library:
 

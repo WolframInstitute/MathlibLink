@@ -15,12 +15,15 @@ PacletDirectoryLoad[FileNameJoin[{Directory[], "MathlibLink"}]]
 Needs["WolframInstitute`MathlibLink`"]
 ```
 
-With [elan](https://lean-lang.org/install/) and Git installed, prepare the
-pinned runtime once:
+Prepare the pinned runtime once. Missing prerequisites are installed locally:
 
 ```wl
 InstallMathlib[]
 ```
+
+Setup reuses working Git and elan installations. See
+[InstallMathlib](docs/en/ReferencePages/Symbols/InstallMathlib.md) for setup
+options and progress reporting.
 
 Open a session and compute a binomial coefficient:
 

@@ -50,6 +50,35 @@ option validation, unavailable objects, closure, interruption and timeout paths.
 The maintained commands are `make check`, `make test` and `make test-mathlib`.
 Raw reports and experiment logs are generated under ignored `build/`.
 
+## Local prerequisite bootstrap
+
+The Git bootstrap pins official micromamba 2.10.0 binaries and Git 2.56.0
+package locks for six operating-system/architecture combinations. All binary
+checksums were matched against the official release sidecars and release
+metadata. The 98 package records pin exact conda-forge URLs and SHA-256 hashes;
+installation does not resolve a moving package set.
+
+On macOS ARM64, the installed 22-package inventory exactly matched its lock.
+The private Git passed HTTPS `ls-remote` and shallow-clone checks with system
+Git excluded from PATH. Both also passed with spaces in the installation and
+checkout paths. A separate two-phase check downloaded packages first and
+installed them offline with an unusable network proxy, then verified HTTPS
+Git operation. Only each prototype's exact environment-registry entry was
+removed afterward; other entries and user configuration were preserved.
+
+The other five platform manifests were resolved and checked, but their
+binaries were not executed on this macOS host. Installer regressions cover
+reuse of working Git, the macOS developer-tools launcher, cancellation during
+download and installation, and preservation of unrelated directories.
+
+Fresh Wolfram-kernel probes also exercised the actual Git and elan bootstrap
+helpers in isolated directories. Git passed HTTPS operation with a private-only
+PATH, reuse and executable-metadata checks. Elan preserved the global default
+toolchain. A real download task passed cancellation, partial-file cleanup,
+retry and checksum verification. Running `InstallMathlib` against the ready
+runtime performed no downloads and preserved its pins, the caller's context
+path and process environment.
+
 ## Proof boundary
 
 A computed value is not a checked theorem. `ProveMathlib` checks the generated
@@ -62,7 +91,7 @@ was independently reproved by MathlibLink.
 
 ## Documentation checks
 
-The 16 documentation pages contain 122 executable inputs. Every input was
+The initial 16-page documentation build contained 122 executable inputs. Every input was
 checked against the pinned runtime; exact comparisons returned True, and the
 intentional admitted proofs were rejected. The resource definition adds two
 verified examples. All 17 notebooks match their authored input expressions

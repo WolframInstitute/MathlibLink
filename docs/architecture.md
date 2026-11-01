@@ -14,9 +14,10 @@ Definitions, theorems, typeclasses and noncomputable declarations remain Lean
 objects when they cannot be copied as Wolfram values.
 
 Loading the paclet performs no installation or network access. InstallMathlib
-explicitly installs the pinned Lean toolchain, LeanLink and mathlib. Elan's
-global default is not changed. Mathlib lives in the user's application-data
-directory; the paclet carries only the small version manifest. Setup downloads
+explicitly prepares elan and Git when needed, then installs the pinned Lean
+toolchain, LeanLink and mathlib. Elan's global default is not changed. Mathlib
+lives in the user's application-data directory; the paclet carries only small
+version manifests. Setup downloads
 the complete cache to make all modules available and builds the Mathlib target.
 The upstream lake-manifest.json is preserved; setup never runs lake update,
 which would advance dependencies beyond the pinned release.
@@ -57,3 +58,27 @@ including retained expressions and proofs. LeanEvaluate bounds its subprocess.
 TimeConstrained around LeanLink elaboration and native kernel checking is a
 best-effort bound: an uninterruptible native call can return after the deadline.
 A timeout is an incomplete check and never a successful proof.
+
+Explicit installation accepts progress and cancellation callbacks. External
+commands use StartProcess with both output streams drained while polling for
+cancellation. Cleanup kills the owned process on cancellation, interruption or
+callback failure. A cancelled new clone is removed only from a directory created
+by that installation attempt. An existing checkout and completed caches remain.
+PacletInstall and native readiness checks observe cancellation between stages;
+their progress is never presented as a cancellable download.
+
+The official elan installer is checksum-pinned and runs with --no-modify-path
+and --default-toolchain none. ELAN_HOME is respected. Lake always uses elan's
+proxy, so the explicit +toolchain argument cannot reach an unrelated native
+Lake executable on PATH. Existing working Git is reused. On macOS, the Apple
+Git launcher is checked through xcode-select before it can start a developer
+tools prompt.
+
+If Git is unavailable, a checksum-pinned micromamba binary downloads an exact
+per-platform package lock from conda-forge. A private configuration confines
+package caches and environment files to MathlibLink's tools directory; normal
+per-user environment registration is retained. Downloading packages and
+offline installation are separate stages. Incomplete owned prefixes can be
+cleaned up; completed or unrelated directories are never overwritten.
+Public installation metadata supplies executable paths and required child
+PATH directories without modifying the Wolfram process environment.

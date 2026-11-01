@@ -1,4 +1,4 @@
-PackageScoped[{mathlibFailure, mathlibLoadLean, mathlibInvoke, mathlibOptionsQ, mathlibTimeQ, mathlibModuleQ, mathlibDirectory, mathlibRuntime, mathlibExecutable, mathlibRun, mathlibVersionQ, mathlibLeanDirectory, mathlibBridgeReadyQ}]
+PackageScoped[{mathlibFailure, mathlibLoadLean, mathlibInvoke, mathlibOptionsQ, mathlibTimeQ, mathlibModuleQ, mathlibDirectory, mathlibRuntime, mathlibExecutable, mathlibRun, mathlibVersionQ, mathlibLeanDirectory, mathlibBridgeReadyQ, mathlibElanHome, mathlibToolsDirectory, mathlibExecutables, mathlibPathDirectories, mathlibEnvironment}]
 
 mathlibFailure[tag_String, message_String, data_Association : <||>] := Failure[tag, Join[<|"MessageTemplate" -> message|>, data]]
 
@@ -25,24 +25,36 @@ mathlibLoadLean[] := Module[{installed = PacletFind["Wolfram/LeanLink"], result}
 	If[result === Null, True, mathlibFailure["LeanLinkUnavailable", "LeanLink could not load. Restart the kernel after updating it.", <|"Result" -> result|>]]
 ]
 
-mathlibExecutable[name_String] := With[{suffix = If[$OperatingSystem === "Windows", ".exe", ""],
-	elan = Replace[Environment["ELAN_HOME"], Except[_String] -> FileNameJoin[{$HomeDirectory, ".elan"}]]},
+mathlibElanHome[] := Replace[Environment["ELAN_HOME"], Except[_String] -> FileNameJoin[{$HomeDirectory, ".elan"}]]
+mathlibToolsDirectory[] := FileNameJoin[{$UserBaseDirectory, "ApplicationData", "MathlibLink", "Tools"}]
+
+mathlibExecutable[name_String] := With[{suffix = If[$OperatingSystem === "Windows", ".exe", ""]},
 	SelectFirst[Join[
-		FileNames[name <> suffix, StringSplit[Replace[Environment["PATH"], Except[_String] -> ""], If[$OperatingSystem === "Windows", ";", ":"]]],
-		{FileNameJoin[{elan, "bin", name <> suffix}]}
+		If[name === "git", {mathlibManagedGit[]}, {}],
+		If[MemberQ[{"elan", "lake"}, name], {FileNameJoin[{mathlibElanHome[], "bin", name <> suffix}]}, {}],
+		If[name === "lake", {}, FileNames[name <> suffix,
+			StringSplit[Replace[Environment["PATH"], Except[_String] -> ""], If[$OperatingSystem === "Windows", ";", ":"]]]]
 	], StringQ[#] && FileExistsQ[#] &, Missing["NotFound", name]]
+]
+
+mathlibExecutables[] := AssociationThread[{"Elan", "Lake", "Git"}, mathlibExecutable /@ {"elan", "lake", "git"}]
+mathlibPathDirectories[] := DeleteDuplicates[Join[
+	DirectoryName /@ Select[Values[mathlibExecutables[]], StringQ],
+	Replace[mathlibGitPathDirectories[], Except[_List] -> {}]
+]]
+mathlibEnvironment[extra_Association : <||>] := Association[GetEnvironment[],
+	"PATH" -> StringRiffle[DeleteDuplicates[Join[mathlibPathDirectories[],
+		StringSplit[Replace[Environment["PATH"], Except[_String] -> ""], If[$OperatingSystem === "Windows", ";", ":"]]]], If[$OperatingSystem === "Windows", ";", ":"]],
+	"ELAN_HOME" -> mathlibElanHome[], "MATHLIB_NO_CACHE_ON_UPDATE" -> "1", extra
 ]
 
 (* Argument lists go directly to the process API, never through a shell. *)
 mathlibRun[arguments_List, directory_String] := Quiet[Check[
-	RunProcess[arguments, All, ProcessDirectory -> directory,
-		ProcessEnvironment -> Association[GetEnvironment[], "MATHLIB_NO_CACHE_ON_UPDATE" -> "1"]],
+	RunProcess[arguments, All, ProcessDirectory -> directory, ProcessEnvironment -> mathlibEnvironment[]],
 	$Failed
 ]]
 
-mathlibLeanDirectory[] := With[{
-	elan = Replace[Environment["ELAN_HOME"], Except[_String] -> FileNameJoin[{$HomeDirectory, ".elan"}]]
-}, FileNameJoin[{elan, "toolchains", StringReplace[mathlibRuntime[]["LeanToolchain"], {"/" -> "--", ":" -> "---"}]}]]
+mathlibLeanDirectory[] := FileNameJoin[{mathlibElanHome[], "toolchains", StringReplace[mathlibRuntime[]["LeanToolchain"], {"/" -> "--", ":" -> "---"}]}]
 
 $bridgeReady = <||>
 
