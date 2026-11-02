@@ -2,6 +2,15 @@ Needs["WolframInstitute`MathlibLink`"]
 
 session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Sqrt", "Mathlib.Data.Nat.Totient", "Mathlib.Computability.PartrecCode"}];
 
+If[MemberQ[First /@ Options[Wolfram`LeanLink`LeanImport], "PrepareEvaluation"],
+	preparedEnvironment = Wolfram`LeanLink`LeanImport["ProjectDir" -> session["Directory"], "Imports" -> session["Imports"], "Filter" -> "Nat.sqrt"];
+	VerificationTest[
+		With[{worker = Wolfram`LeanLink`Private`$evaluationWorkers[Information[preparedEnvironment, "Handle"]]},
+			{ProcessStatus[worker["Process"]], KeyExistsQ[worker, "RequestID"]}],
+		{"Running", False}, TestID -> "session-prepares-evaluator-before-first-call"
+	]
+];
+
 VerificationTest[MathlibCall[session, "Nat.sqrt", 1000], 31, TestID -> "generic-integer-root-call"]
 VerificationTest[MathlibCall[session, "Nat.totient", 100], 40, TestID -> "generic-number-theory-call"]
 VerificationTest[MathlibEvaluate[session, "(2 : Nat) ^ 100"], 2^100, TestID -> "large-value-lossless"]

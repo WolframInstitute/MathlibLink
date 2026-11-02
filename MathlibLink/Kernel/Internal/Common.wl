@@ -1,5 +1,9 @@
 PackageScoped[{mathlibFailure, mathlibLoadLean, mathlibInvoke, mathlibOptionsQ, mathlibTimeQ, mathlibModuleQ, mathlibDirectory, mathlibRuntime, mathlibExecutable, mathlibRun, mathlibVersionQ, mathlibLeanDirectory, mathlibBridgeReadyQ, mathlibElanHome, mathlibToolsDirectory, mathlibExecutables, mathlibPathDirectories, mathlibEnvironment}]
 
+PackageScoped[mathlibDirectLeanQ]
+
+mathlibDirectLeanQ[] := Names["Wolfram`LeanLink`LeanVerify"] =!= {} && With[{verify = Symbol["Wolfram`LeanLink`LeanVerify"]}, DownValues[verify] =!= {}]
+
 mathlibFailure[tag_String, message_String, data_Association : <||>] := Failure[tag, Join[<|"MessageTemplate" -> message|>, data]]
 
 mathlibRuntime[] := mathlibRuntime[] = Import[FileNameJoin[{PacletObject["WolframInstitute/MathlibLink"]["Location"], "Resources", "Runtime.json"}], "RawJSON"]

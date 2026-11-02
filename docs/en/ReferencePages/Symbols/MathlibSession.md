@@ -22,6 +22,7 @@ RelatedTutorials: [GettingStarted]
 - `session["Directory"]` gives its runtime directory.
 - `session["Imports"]` gives its selected Lean modules.
 - `session["DeclarationCount"]` gives the number of available declarations.
+- The expandable summary shows the session state and declaration count, with its imports and directory under the opener.
 - [DeleteObject]() closes the session. Its retained [MathlibObject]() values then become unavailable.
 
 ## Basic Examples

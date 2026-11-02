@@ -21,6 +21,7 @@ RelatedTutorials: [ValuesAndProofs]
 - Properties include "Name", "Kind", "Type", "TypeForm", "Term", "TermForm", "Axioms", "KernelCheck", "Module" and "DocumentationURL".
 - "TypeForm" and "TermForm" use Lean's printer. "Type" and "Term" preserve the Lean expression structure.
 - "Verified" is True for a theorem produced by [ProveMathlib](). Inspecting a declaration alone does not perform a new proof check.
+- The expandable summary shows the declaration, expression or checked statement. Displaying it does not run Lean or repeat a proof check.
 - [Normal]() gives the underlying LeanLink term.
 - The object belongs to its originating session and cannot be passed to another session.
 - Closing the session invalidates its objects.

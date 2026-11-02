@@ -20,6 +20,7 @@ RelatedTutorials: [GettingStarted, ValuesAndProofs]
 - The result is a [MathlibSession]() object.
 - The default import is "Mathlib", exposing the full imported declaration namespace.
 - "Imports" selects smaller Lean modules and their dependencies, reducing startup time and memory use.
+- With LeanLink's environment evaluator, new imports prepare evaluation while loading the modules.
 - Setup must be completed with [InstallMathlib]() before opening a session.
 - [DeleteObject]() closes a session and invalidates its retained objects. Imported modules remain cached until the kernel exits.
 - A failure to open the selected runtime gives [Failure]().

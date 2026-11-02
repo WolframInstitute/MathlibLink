@@ -20,6 +20,7 @@ RelatedTutorials: [ValuesAndProofs]
 - *source* is a Lean expression string.
 - Use this form for type annotations, functions, hypotheses or values without an automatic Wolfram conversion.
 - Constructing this expression does not run Lean. It is elaborated when used by [MathlibCall]().
+- The summary previews the source; expand it to read the complete expression.
 - An ordinary Wolfram string argument remains string data.
 
 ## Basic Examples

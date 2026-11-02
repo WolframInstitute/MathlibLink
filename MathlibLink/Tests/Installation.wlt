@@ -188,3 +188,15 @@ If[$OperatingSystem =!= "Windows",
 		TestID -> "installer-process-drains-both-streams-and-exit-status"
 	]
 ]
+
+If[$OperatingSystem =!= "Windows",
+	VerificationTest[
+		Module[{out = StringRepeat["o", 256], err = StringRepeat["e", 256], result},
+			result = WolframInstitute`MathlibLink`PackageScope`mathlibInstallRun[
+				{"/bin/sh", "-c", "i=0; while [ $i -lt 4096 ]; do printf '" <> out <>
+					"'; printf '" <> err <> "' >&2; i=$((i+1)); done; exit 7"}, Directory[]];
+			result === <|"ExitCode" -> 7, "StandardOutput" -> StringRepeat[out, 4096], "StandardError" -> StringRepeat[err, 4096]|>
+		],
+		True, TestID -> "installer-process-keeps-large-logs-on-both-streams"
+	]
+]

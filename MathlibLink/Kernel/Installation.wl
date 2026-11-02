@@ -29,21 +29,27 @@ mathlibInstallStage[stage_String, fraction_ : None] := (
 
 (* Drain both pipes while polling, so a long cache download remains responsive.
    WithCleanup also stops the owned process on Throw, Abort or a callback error. *)
-mathlibInstallRun[arguments_List, directory_String, extraEnvironment_Association : <||>] := Module[{process, out = "", err = "", read},
+mathlibInstallRun[arguments_List, directory_String, extraEnvironment_Association : <||>] := Module[{process, out = "", err = "", read, stdout, stderr, newOut, newErr},
 	mathlibCheckCancellation[];
 	read[stream_] := Replace[ReadString[stream, EndOfBuffer], Except[_String] -> ""];
 	process = Quiet[Check[StartProcess[arguments, ProcessDirectory -> directory,
 		ProcessEnvironment -> mathlibEnvironment[extraEnvironment]], $Failed]];
 	If[! MatchQ[process, _ProcessObject], Return[$Failed]];
+	stdout = ProcessConnection[process, "StandardOutput"];
+	stderr = ProcessConnection[process, "StandardError"];
 	WithCleanup[
-		While[ProcessStatus[process] === "Running",
+		While[True,
 			mathlibCheckCancellation[];
-			out = out <> read[ProcessConnection[process, "StandardOutput"]];
-			err = err <> read[ProcessConnection[process, "StandardError"]];
-			Pause[0.1]
+			newOut = read[stdout];
+			newErr = read[stderr];
+			out = out <> newOut;
+			err = err <> newErr;
+			If[newOut === "" && newErr === "",
+				(* Output may remain buffered after the process exits. *)
+				If[ProcessStatus[process] =!= "Running", Break[]];
+				Pause[0.1]
+			]
 		];
-		out = out <> read[ProcessConnection[process, "StandardOutput"]];
-		err = err <> read[ProcessConnection[process, "StandardError"]];
 		mathlibCheckCancellation[];
 		<|"ExitCode" -> ProcessInformation[process, "ExitCode"], "StandardOutput" -> out, "StandardError" -> err|>,
 		If[ProcessStatus[process] === "Running", KillProcess[process]]

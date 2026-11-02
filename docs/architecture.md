@@ -1,17 +1,23 @@
 # Design
 
-MathlibLink connects Wolfram Language to the complete declaration namespace
-of a pinned mathlib release. It follows PARILink's explicit sessions,
-structured arguments, retained objects and error handling. It is independent
-of the applications that use it.
+MathlibLink prepares a pinned mathlib release for LeanLink. Normal use imports
+modules with LeanImport, inspects LeanTerms, evaluates with LeanEvaluate and
+checks theorems with LeanVerify. MathlibLink adds no separate evaluator or
+function whitelist. It remains independent of applications that use it.
 
-LeanLink supplies the native Lean environment, elaboration, evaluation and
-kernel-checking operations. MathlibLink supplies a reproducible mathlib setup,
-session-owned object lifetimes, generic calls, declaration discovery and
-upstream documentation links. There is no hand-maintained function whitelist.
-The default session imports Mathlib; smaller import lists reduce startup cost.
-Definitions, theorems, typeclasses and noncomputable declarations remain Lean
-objects when they cannot be copied as Wolfram values.
+LeanLink owns imported environments and their evaluation processes. A worker
+starts on the first evaluation, or during import with "PrepareEvaluation" -> True.
+Compatibility sessions enable this option for new imports when available.
+Later calls reuse that worker. Each request starts from the same imported environment, so temporary
+source declarations and errors do not affect subsequent requests. Computed
+values are not cached. Exact supported values cross the interface as JSON;
+noncomputable definitions and proofs remain LeanTerms.
+
+The environment interface is developed with LeanLink's
+feature/environment-evaluation branch. Released LeanLink versions remain
+usable through the existing MathlibLink session APIs. Those APIs are
+compatibility adapters: when the new interface is available, evaluation,
+source imports and strict proof verification delegate to LeanLink.
 
 Loading the paclet performs no installation or network access. InstallMathlib
 explicitly prepares elan, Git and curl when needed, then installs the pinned Lean
@@ -30,10 +36,13 @@ reset or overwritten. Interrupted setup can be rerun at the same revision.
 Sessions borrow LeanLink's cached import environments. Closing one session
 invalidates its objects without freeing another session's shared environment.
 Compiled expressions and proofs have unique environment handles, released when
-the owning object or session closes. Cached imported modules remain under LeanLink's
-ownership. Session and object identifiers are valid only in the creating kernel.
+the owning object or session closes. When the last compatibility session using an environment closes, its evaluator
+is stopped; the native environment stays valid for direct LeanLink users.
+A later call restarts evaluation as needed. Explicitly released environments
+are removed from the session import cache before reuse. Session and object
+identifiers are valid only in the creating kernel.
 
-LeanLink 1.2.5 also retains native imported-module regions until the kernel exits;
+LeanLink also retains native imported-module regions until the kernel exits;
 freeing an environment handle does not reclaim those regions. Its
 [environment loader](https://github.com/WolframInstitute/LeanLink/blob/8f9d43c5422b0514229a7fc3407a86b160f67423/Native/lib/LeanLink/EnvStore.lean#L49-L57)
 documents this lifetime. Prefer explicit module imports for focused work.
@@ -41,7 +50,7 @@ Independent live-test phases run in fresh Wolfram kernels so repeated full
 imports do not accumulate across the suite. Full-default namespace, call and
 proof checks remain part of the live tests.
 
-MathlibEvaluate runs Lean's evaluator and copies supported JSON values.
+MathlibEvaluate delegates evaluation to LeanLink and copies supported values.
 MathlibCall builds a Lean application from exact structured values and typed
 source arguments. Neither operation is a theorem prover. ReturnType "Object"
 elaborates and retains a typed Lean definition, including noncomputable terms.
@@ -62,7 +71,7 @@ claim that a theorem or noncomputable function can be evaluated numerically.
 PacletPage is the sole documentation and archive pipeline; publishing is a
 separate explicit action.
 
-Timeouts and interruptions close the owning session for every execution path,
+Compatibility-session timeouts and interruptions close the owning session,
 including retained expressions and proofs. LeanEvaluate bounds its subprocess.
 TimeConstrained around LeanLink elaboration and native kernel checking is a
 best-effort bound: an uninterruptible native call can return after the deadline.
