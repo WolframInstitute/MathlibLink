@@ -10,6 +10,22 @@ Options[MathlibEvaluate] = {TimeConstraint -> 120, "ReturnType" -> Automatic}
 Options[MathlibCall] = Options[MathlibEvaluate]
 Options[ProveMathlib] = {TimeConstraint -> 120}
 
+(* Keep the released LeanLink usable while the environment interface is developed. *)
+importSource[state_Association, source_String] := If[mathlibDirectLeanQ[],
+	mathlibInvoke["LeanImportString", state["Environment"], source],
+	mathlibInvoke["LeanImportString", mathlibSessionSource[state] <> source, "ProjectDir" -> state["Directory"]]
+]
+
+verifyTheorem[term_, time_] := If[mathlibDirectLeanQ[],
+	mathlibInvoke["LeanVerify", term, "TimeLimit" -> time],
+	With[{axioms = term["Axioms"]},
+		If[! MatchQ[axioms, {___String}] || Complement[axioms, {"propext", "Quot.sound", "Classical.choice"}] =!= {},
+			mathlibFailure["UntrustedProof", "The theorem depends on an admitted proof or an additional axiom.", <|"Axioms" -> axioms|>],
+			TimeConstrained[term["KernelCheck"], time, $TimedOut]
+		]
+	]
+]
+
 mathlibQuoteName[name_String] := If[StringContainsQ[name, "\:00ab" | "\:00bb" | "\n" | "\r"],
 	mathlibFailure["MathlibUnsupportedName", "Use MathlibExpression for this Lean identifier."],
 	StringRiffle[("\:00ab" <> # <> "\:00bb" &) /@ StringSplit[name, ".", All], "."]
@@ -41,10 +57,10 @@ mathlibEncode[_, _] := mathlibFailure["MathlibUnsupportedValue", "Use an exact i
 
 retainExpression[session_MathlibSession, state_Association, expression_String, time_] := Module[{name, source, environment, result},
 	name = "mathliblink_value_" <> StringDelete[CreateUUID[], "-"];
-	source = mathlibSessionSource[state] <> "noncomputable def " <> name <> " := (" <> expression <> ")\n";
+	source = "noncomputable def " <> name <> " := (" <> expression <> ")\n";
 	environment = None;
 	result = CheckAbort[
-		TimeConstrained[environment = Quiet[Check[mathlibInvoke["LeanImportString", source, "ProjectDir" -> state["Directory"]], $Failed]], time, $TimedOut],
+		TimeConstrained[environment = Quiet[Check[importSource[state, source], $Failed]], time, $TimedOut],
 		If[MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]], mathlibInvoke["LeanFreeEnvironment", Information[environment, "Handle"]]];
 		mathlibCloseSession[session]; Abort[]
 	];
@@ -70,7 +86,10 @@ MathlibEvaluate[session_MathlibSession, expression_String, opts : OptionsPattern
 	If[FailureQ[state], Return[state]];
 	If[mode === "Object", Return[retainExpression[session, state, expression, time]]];
 	result = CheckAbort[
-		mathlibInvoke["LeanEvaluate", expression, "ProjectDir" -> state["Directory"], "Imports" -> state["Imports"], "TimeLimit" -> time],
+		If[mathlibDirectLeanQ[],
+			mathlibInvoke["LeanEvaluate", state["Environment"], expression, "TimeLimit" -> time],
+			mathlibInvoke["LeanEvaluate", expression, "ProjectDir" -> state["Directory"], "Imports" -> state["Imports"], "TimeLimit" -> time]
+		],
 		mathlibCloseSession[session]; Abort[]
 	];
 	If[MatchQ[result, Failure["TimedOut", _]], mathlibCloseSession[session]];
@@ -91,7 +110,7 @@ MathlibCall[session_MathlibSession, name_String, arguments : Longest[Except[_Rul
 	]
 
 ProveMathlib[session_MathlibSession, statement_String, proof_String, opts : OptionsPattern[]] := Module[{
-	state, time, name, source, environment, term, axioms, checked, result, retained = False, started = AbsoluteTime[]
+	state, time, name, source, environment, term, checked, result, retained = False, started = AbsoluteTime[]
 },
 	If[! mathlibOptionsQ[ProveMathlib, {opts}], Return[mathlibFailure["MathlibInvalidOption", "Unknown proof option."]]];
 	time = OptionValue[TimeConstraint];
@@ -99,10 +118,10 @@ ProveMathlib[session_MathlibSession, statement_String, proof_String, opts : Opti
 	state = mathlibSessionData[session];
 	If[FailureQ[state], Return[state]];
 	name = "mathliblink_theorem_" <> StringDelete[CreateUUID[], "-"];
-	source = mathlibSessionSource[state] <> "theorem " <> name <> " : " <> statement <> " := " <> proof <> "\n";
+	source = "theorem " <> name <> " : " <> statement <> " := " <> proof <> "\n";
 	environment = None;
 	result = CheckAbort[
-		TimeConstrained[environment = Quiet[Check[mathlibInvoke["LeanImportString", source, "ProjectDir" -> state["Directory"]], $Failed]], time, $TimedOut],
+		TimeConstrained[environment = Quiet[Check[importSource[state, source], $Failed]], time, $TimedOut],
 		If[MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]], mathlibInvoke["LeanFreeEnvironment", Information[environment, "Handle"]]];
 		mathlibCloseSession[session]; Abort[]
 	];
@@ -117,15 +136,12 @@ ProveMathlib[session_MathlibSession, statement_String, proof_String, opts : Opti
 	];
 	WithCleanup[
 		term = environment[name];
-		axioms = term["Axioms"];
-		If[! MatchQ[axioms, {___String}] || Complement[axioms, {"propext", "Quot.sound", "Classical.choice"}] =!= {},
-			Return[mathlibFailure["MathlibUntrustedProof", "The theorem depends on an admitted proof or an additional axiom.", <|"Axioms" -> axioms|>]]
-		];
 		checked = CheckAbort[
-			TimeConstrained[term["KernelCheck"], If[time === Infinity, Infinity, Max[0.001, time - (AbsoluteTime[] - started)]], $TimedOut],
+			verifyTheorem[term, If[time === Infinity, Infinity, Max[0.001, time - (AbsoluteTime[] - started)]]],
 			mathlibCloseSession[session]; Abort[]
 		];
-		If[checked === $TimedOut, mathlibCloseSession[session]; Return[mathlibFailure["MathlibTimedOut", "Kernel checking exceeded the time limit. The session was closed."]]];
+		If[checked === $TimedOut || MatchQ[checked, Failure["TimedOut", _]], mathlibCloseSession[session]; Return[mathlibFailure["MathlibTimedOut", "Kernel checking exceeded the time limit. The session was closed."]]];
+		If[MatchQ[checked, Failure["UntrustedProof", _]], Return[mathlibFailure["MathlibUntrustedProof", "The theorem depends on an admitted proof or an additional axiom.", <|"Axioms" -> checked["Axioms"]|>]]];
 		If[! MatchQ[checked, _Success], Return[mathlibFailure["MathlibKernelRejected", "Lean's kernel did not accept the theorem's module.", <|"Result" -> checked|>]]];
 		result = mathlibKeepObject[session, term, "((" <> proof <> ") : " <> statement <> ")", environment, True];
 		retained = ! FailureQ[result];

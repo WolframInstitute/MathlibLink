@@ -20,6 +20,9 @@ StartMathlibSession[opts : OptionsPattern[]] := Module[{directory, imports, load
 	If[FailureQ[loaded], Return[loaded]];
 	imports = DeleteDuplicates[imports];
 	cacheKey = Hash[{directory, imports}, "SHA256", "HexString"];
+	If[KeyExistsQ[$mathlibEnvironments, cacheKey] && Information[$mathlibEnvironments[cacheKey]["Environment"], "Valid"] === False,
+		KeyDropFrom[$mathlibEnvironments, cacheKey]
+	];
 	If[KeyExistsQ[$mathlibEnvironments, cacheKey],
 		{environment, names} = Lookup[$mathlibEnvironments[cacheKey], {"Environment", "Names"}],
 		environment = Quiet[Check[mathlibInvoke["LeanImport", "ProjectDir" -> directory, "Imports" -> imports, "IncludeInternal" -> True], $Failed]];
@@ -30,7 +33,7 @@ StartMathlibSession[opts : OptionsPattern[]] := Module[{directory, imports, load
 	session = MathlibSession[CreateUUID[]];
 	AssociateTo[$mathlibSessions, First[session] -> <|"Status" -> "Ready", "Directory" -> directory,
 		"Imports" -> DeleteDuplicates[imports], "Environment" -> environment, "Names" -> names, "Objects" -> {},
-		"DeclarationCount" -> Length[environment]|>];
+		"DeclarationCount" -> Length[environment], "CacheKey" -> cacheKey|>];
 	session
 ]
 
@@ -49,7 +52,10 @@ mathlibSessionSource[state_Association] := StringRiffle[("import " <> # &) /@ st
 mathlibCloseSession[session : MathlibSession[id_String]] := With[{state = Lookup[$mathlibSessions, id, None]},
 	If[AssociationQ[state] && state["Status"] === "Ready",
 		Scan[mathlibForgetObject, state["Objects"]];
-		AssociateTo[$mathlibSessions, id -> Append[KeyTake[state, {"Directory", "Imports", "DeclarationCount"}], "Status" -> "Closed"]]
+		AssociateTo[$mathlibSessions, id -> Append[KeyTake[state, {"Directory", "Imports", "DeclarationCount"}], "Status" -> "Closed"]];
+		If[mathlibDirectLeanQ[] && KeyExistsQ[state, "Environment"] && NoneTrue[Values[$mathlibSessions], Lookup[#, "Status", None] === "Ready" && Lookup[#, "CacheKey", None] === state["CacheKey"] &],
+			mathlibInvoke["LeanFreeEnvironment", state["Environment"], "EvaluatorOnly" -> True]
+		]
 	];
 	Null
 ]
