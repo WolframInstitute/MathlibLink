@@ -6,11 +6,11 @@ MathlibDeclaration::usage = "MathlibDeclaration[session, name] gives a typed obj
 
 $mathlibObjects = <||>
 
-mathlibKeepObject[session : MathlibSession[sessionID_String], term_, expression_String, environment_ : None, verified_ : False] := Module[{id = CreateUUID[], state},
+mathlibKeepObject[session : MathlibSession[sessionID_String], term_, expression_String, environment_ : None, verified_ : False, statement_ : None] := Module[{id = CreateUUID[], state},
 	state = mathlibSessionData[session];
 	If[FailureQ[state], Return[state]];
 	AssociateTo[$mathlibObjects, id -> <|"Session" -> sessionID, "Term" -> term, "Expression" -> expression,
-		"Environment" -> environment, "Verified" -> verified|>];
+		"Environment" -> environment, "Verified" -> verified, "Statement" -> statement|>];
 	AssociateTo[$mathlibSessions, sessionID -> Append[state, "Objects" -> Append[state["Objects"], id]]];
 	MathlibObject[id]
 ]
@@ -67,13 +67,4 @@ MathlibDeclaration[session_MathlibSession, name_String] := With[{state = mathlib
 
 MathlibObject /: Normal[object_MathlibObject] := With[{data = mathlibObjectData[object]}, If[FailureQ[data], data, data["Term"]]]
 MathlibObject /: DeleteObject[MathlibObject[id_String]] := mathlibForgetObject[id]
-MathlibObject /: MakeBoxes[object : MathlibObject[id_String], form_] := With[{
-	data = Lookup[$mathlibObjects, id, None]
-}, With[{label = Which[
-	! AssociationQ[data], "Released",
-	TrueQ[data["Verified"]], "Checked theorem",
-	data["Environment"] =!= None, "Typed expression",
-	True, data["Term"]["Name"]
-]}, With[{boxes = ToBoxes[label, form]},
-	InterpretationBox[RowBox[{"MathlibObject", "[", boxes, "]"}], object]
-]]]
+MathlibObject /: MakeBoxes[object : MathlibObject[_String], form : StandardForm | TraditionalForm] := mathlibObjectBoxes[object, form]

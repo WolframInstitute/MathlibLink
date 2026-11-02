@@ -10,6 +10,8 @@ Options[MathlibEvaluate] = {TimeConstraint -> 120, "ReturnType" -> Automatic}
 Options[MathlibCall] = Options[MathlibEvaluate]
 Options[ProveMathlib] = {TimeConstraint -> 120}
 
+MathlibExpression /: MakeBoxes[expression : MathlibExpression[_String], form : StandardForm | TraditionalForm] := mathlibExpressionBoxes[expression, form]
+
 (* Keep the released LeanLink usable while the environment interface is developed. *)
 importSource[state_Association, source_String] := If[mathlibDirectLeanQ[],
 	mathlibInvoke["LeanImportString", state["Environment"], source],
@@ -143,7 +145,7 @@ ProveMathlib[session_MathlibSession, statement_String, proof_String, opts : Opti
 		If[checked === $TimedOut || MatchQ[checked, Failure["TimedOut", _]], mathlibCloseSession[session]; Return[mathlibFailure["MathlibTimedOut", "Kernel checking exceeded the time limit. The session was closed."]]];
 		If[MatchQ[checked, Failure["UntrustedProof", _]], Return[mathlibFailure["MathlibUntrustedProof", "The theorem depends on an admitted proof or an additional axiom.", <|"Axioms" -> checked["Axioms"]|>]]];
 		If[! MatchQ[checked, _Success], Return[mathlibFailure["MathlibKernelRejected", "Lean's kernel did not accept the theorem's module.", <|"Result" -> checked|>]]];
-		result = mathlibKeepObject[session, term, "((" <> proof <> ") : " <> statement <> ")", environment, True];
+		result = mathlibKeepObject[session, term, "((" <> proof <> ") : " <> statement <> ")", environment, True, statement];
 		retained = ! FailureQ[result];
 		result,
 		If[! retained, mathlibInvoke["LeanFreeEnvironment", Information[environment, "Handle"]]]

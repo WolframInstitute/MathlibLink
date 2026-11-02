@@ -66,9 +66,7 @@ mathlibCloseSession[session : MathlibSession[id_String]] := With[{state = Lookup
 (session_MathlibSession)[property_String] := Missing["UnknownProperty", property]
 
 MathlibSession /: DeleteObject[session_MathlibSession] := mathlibCloseSession[session]
-MathlibSession /: MakeBoxes[session : MathlibSession[id_String], form_] := With[{
-	status = Lookup[Lookup[$mathlibSessions, id, <||>], "Status", "Unavailable"]
-}, With[{boxes = ToBoxes[status, form]}, InterpretationBox[RowBox[{"MathlibSession", "[", boxes, "]"}], session]]]
+MathlibSession /: MakeBoxes[session : MathlibSession[_String], form : StandardForm | TraditionalForm] := mathlibSessionBoxes[session, form]
 
 MathlibNames[session_MathlibSession, pattern_String : "*"] := With[{state = mathlibSessionData[session]},
 	If[FailureQ[state], state, Select[state["Names"], StringMatchQ[#, pattern] &]]
