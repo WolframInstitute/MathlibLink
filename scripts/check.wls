@@ -13,6 +13,6 @@ coverage = AllTrue[symbols, Function[symbol, With[{name = Last[StringSplit[symbo
 ]]];
 usage = AllTrue[symbols, Function[symbol, StringQ[ToExpression[symbol <> "::usage"]]]];
 metadata = PacletObject[File[paclet]];
-valid = metadata["Name"] === "WolframInstitute/MathlibLink" && metadata["Version"] === "0.1.0";
+valid = metadata["Name"] === "WolframInstitute/MathlibLink" && metadata["Version"] === "0.1.1";
 Print[Length[files], " source/test files; ", Length[symbols], " public symbols."];
 Exit[If[syntax && coverage && usage && valid, 0, 1]];

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1
+
+- Use LeanLink's environment evaluator and proof checks when available, while preserving compatibility with released LeanLink.
+- Prepare evaluation during module imports and share expression and proof cleanup.
+- Show expandable notebook summaries for sessions, declarations, values and expressions.
+- Read available installation output without unnecessary waits.
+
 ## 0.1.0
 
 - Add pinned mathlib installation and explicit Lean sessions.
