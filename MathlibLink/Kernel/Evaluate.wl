@@ -57,26 +57,32 @@ mathlibEncode[MathlibSession[sessionID_String], object_MathlibObject] := With[{d
 ]
 mathlibEncode[_, _] := mathlibFailure["MathlibUnsupportedValue", "Use an exact integer, rational, boolean, string, list, MathlibObject or MathlibExpression."]
 
-retainExpression[session_MathlibSession, state_Association, expression_String, time_] := Module[{name, source, environment, result},
-	name = "mathliblink_value_" <> StringDelete[CreateUUID[], "-"];
-	source = "noncomputable def " <> name <> " := (" <> expression <> ")\n";
-	environment = None;
+releaseEnvironment[environment_] := If[MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]],
+	mathlibInvoke["LeanFreeEnvironment", Information[environment, "Handle"]]
+]
+
+elaborateSource[session_MathlibSession, state_Association, source_String, time_, failure_Failure] := Module[{environment = None, result},
 	result = CheckAbort[
 		TimeConstrained[environment = Quiet[Check[importSource[state, source], $Failed]], time, $TimedOut],
-		If[MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]], mathlibInvoke["LeanFreeEnvironment", Information[environment, "Handle"]]];
+		releaseEnvironment[environment];
 		mathlibCloseSession[session]; Abort[]
 	];
 	If[result === $TimedOut,
-		If[MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]], mathlibInvoke["LeanFreeEnvironment", Information[environment, "Handle"]]];
+		releaseEnvironment[environment];
 		mathlibCloseSession[session];
 		Return[mathlibFailure["MathlibTimedOut", "Lean elaboration exceeded the time limit. The session was closed."]]
 	];
-	environment = result;
-	If[! MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]],
-		Return[mathlibFailure[If[environment === $TimedOut, "MathlibTimedOut", "MathlibElaborationFailed"], "Lean could not elaborate the expression.", <|"Expression" -> expression|>]]
-	];
+	If[MatchQ[result, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]], result, failure]
+]
+
+retainExpression[session_MathlibSession, state_Association, expression_String, time_] := Module[{name, source, environment, result},
+	name = "mathliblink_value_" <> StringDelete[CreateUUID[], "-"];
+	source = "noncomputable def " <> name <> " := (" <> expression <> ")\n";
+	environment = elaborateSource[session, state, source, time,
+		mathlibFailure["MathlibElaborationFailed", "Lean could not elaborate the expression.", <|"Expression" -> expression|>]];
+	If[FailureQ[environment], Return[environment]];
 	result = mathlibKeepObject[session, environment[name], expression, environment];
-	If[FailureQ[result], mathlibInvoke["LeanFreeEnvironment", Information[environment, "Handle"]]];
+	If[FailureQ[result], releaseEnvironment[environment]];
 	result
 ]
 
@@ -121,21 +127,9 @@ ProveMathlib[session_MathlibSession, statement_String, proof_String, opts : Opti
 	If[FailureQ[state], Return[state]];
 	name = "mathliblink_theorem_" <> StringDelete[CreateUUID[], "-"];
 	source = "theorem " <> name <> " : " <> statement <> " := " <> proof <> "\n";
-	environment = None;
-	result = CheckAbort[
-		TimeConstrained[environment = Quiet[Check[importSource[state, source], $Failed]], time, $TimedOut],
-		If[MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]], mathlibInvoke["LeanFreeEnvironment", Information[environment, "Handle"]]];
-		mathlibCloseSession[session]; Abort[]
-	];
-	If[result === $TimedOut,
-		If[MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]], mathlibInvoke["LeanFreeEnvironment", Information[environment, "Handle"]]];
-		mathlibCloseSession[session];
-		Return[mathlibFailure["MathlibTimedOut", "Lean elaboration exceeded the time limit. The session was closed."]]
-	];
-	environment = result;
-	If[! MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]],
-		Return[mathlibFailure[If[environment === $TimedOut, "MathlibTimedOut", "MathlibProofFailed"], "Lean did not produce the requested theorem.", <|"Statement" -> statement|>]]
-	];
+	environment = elaborateSource[session, state, source, time,
+		mathlibFailure["MathlibProofFailed", "Lean did not produce the requested theorem.", <|"Statement" -> statement|>]];
+	If[FailureQ[environment], Return[environment]];
 	WithCleanup[
 		term = environment[name];
 		checked = CheckAbort[
@@ -148,6 +142,6 @@ ProveMathlib[session_MathlibSession, statement_String, proof_String, opts : Opti
 		result = mathlibKeepObject[session, term, "((" <> proof <> ") : " <> statement <> ")", environment, True, statement];
 		retained = ! FailureQ[result];
 		result,
-		If[! retained, mathlibInvoke["LeanFreeEnvironment", Information[environment, "Handle"]]]
+		If[! retained, releaseEnvironment[environment]]
 	]
 ]
