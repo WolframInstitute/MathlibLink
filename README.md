@@ -4,8 +4,8 @@
 [![Release](https://github.com/WolframInstitute/MathlibLink/actions/workflows/release.yml/badge.svg)](https://github.com/WolframInstitute/MathlibLink/actions/workflows/release.yml)
 
 MathlibLink connects Wolfram Language to [mathlib](https://leanprover-community.github.io/mathlib4_docs/),
-Lean's mathematics library. It provides declaration lookup, typed objects,
-exact computations and checked proofs through explicit sessions.
+Lean's mathematics library. MathlibLink prepares the runtime; LeanLink imports
+its declarations, evaluates expressions and checks proofs.
 
 Requires Wolfram Language 15.0 or later.
 
@@ -19,6 +19,9 @@ Install and load the paclet:
 
 ```wl
 PacletInstall[ResourceObject["https://wolfr.am/1IuI3kKSs"]]
+```
+
+```wl
 Needs["WolframInstitute`MathlibLink`"]
 ```
 
@@ -32,45 +35,66 @@ Setup reuses working Git, curl and elan installations. See
 [InstallMathlib](https://www.wolframcloud.com/obj/wolframinstitute/MathlibLink/#ref/InstallMathlib) for setup
 options and progress reporting.
 
-Import binomial coefficients and compute a value:
+The environment interface below requires the accompanying LeanLink
+`feature/environment-evaluation` branch until its next release. Existing
+`StartMathlibSession`, `MathlibCall` and `ProveMathlib` calls remain supported.
+
+Load LeanLink:
 
 ```wl
-session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic"}]
-MathlibCall[session, "Nat.choose", 10, 4]
+Needs["Wolfram`LeanLink`"]
 ```
 
-Inspect a theorem:
+Import the binomial-coefficient module from the installed mathlib project:
 
 ```wl
-MathlibDeclaration[session, "Nat.add_comm"]["TypeForm"]
+env = LeanImport["Mathlib.Data.Nat.Choose.Basic", "ProjectDir" -> MathlibInstallation[]["Directory"]]
 ```
 
-Prove an identity:
+Apply an imported function:
 
 ```wl
-proof = ProveMathlib[session, "∀ n : Nat, n + 0 = n", "by intro n; rfl"]
+LeanEvaluate[env["Nat.choose"], 10, 4]
 ```
 
-Close the session:
+Evaluate a family of inputs in one call:
 
 ```wl
-DeleteObject[session]
+LeanEvaluate[env, "(List.range 11).map (fun k => Nat.choose 10 k)"]
+```
+
+The first evaluation starts a Lean process. Later calls reuse its imports.
+Batching inputs also reduces transfers between Wolfram Language and Lean.
+
+Compile a theorem using the same imports:
+
+```wl
+proofs = LeanImportString[env, "theorem addZero (n : Nat) : n + 0 = n := by rfl"]
+```
+
+Check its proof and axiom dependencies:
+
+```wl
+LeanVerify[proofs["addZero"]]
+```
+
+Release the environments when finished:
+
+```wl
+Scan[LeanFreeEnvironment, {proofs, env}]
 ```
 
 ## Coverage
 
-The default session imports `Mathlib` and exposes its complete declaration
-namespace. Functions, theorems, structures and instances use the same lookup
-interface. There is no hand-maintained list of supported function names.
-Use `MathlibNames[session, "Nat.*"]` to browse names and
-`MathlibDeclaration[session, name]` to inspect a declaration.
-The [coverage report](docs/coverage.md) records the complete namespace check
-and live verification results.
+Use `LeanImport["Mathlib", "ProjectDir" -> directory]` for the full library,
+or select modules to reduce startup time and memory use. `Keys[env]` lists
+names; `env[name]` returns a Lean term whose type, definition and axioms can
+be inspected. No function whitelist or separate mathlib evaluator is needed.
 
 Computable expressions can produce Wolfram values. Noncomputable definitions
-and proofs remain typed Lean objects. A finite computation and a
-kernel-checked theorem establish different things; see
-[values and proofs](https://www.wolframcloud.com/obj/wolframinstitute/MathlibLink/#tutorial/ValuesAndProofs).
+and proofs remain typed Lean terms. See [values and proofs](docs/en/Tutorials/ValuesAndProofs.md)
+for examples, and the [coverage report](docs/coverage.md) for namespace and
+live verification results.
 
 ## Documentation
 

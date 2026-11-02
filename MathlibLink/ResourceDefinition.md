@@ -3,6 +3,7 @@ Template: Paclet
 ResourceType: Paclet
 Name: WolframInstitute/MathlibLink
 Context: WolframInstitute`MathlibLink`
+ContextPath: [Wolfram`LeanLink`]
 Paclet: WolframInstitute/MathlibLink
 Description: Connect Wolfram Language to mathlib for typed mathematics and checked proofs
 ContributedBy: Wolfram Institute
@@ -15,7 +16,7 @@ Categories: [Mathematics]
 
 ## Details & Options
 
-- Explicit sessions expose mathlib's complete imported declaration namespace.
+- MathlibLink prepares mathlib; LeanLink imports its complete declaration namespace.
 - Functions, theorems, structures and instances share a declaration interface.
 - Exact supported values can be copied to Wolfram Language; other expressions remain typed Lean objects.
 - Proof construction includes kernel replay and axiom checks.
@@ -24,20 +25,35 @@ Categories: [Mathematics]
 
 ## Usage
 
-[StartMathlibSession]() opens a session. [MathlibCall]() applies a named
-function, [MathlibDeclaration]() inspects a declaration, and [ProveMathlib]()
-checks a theorem. [InstallMathlib]() prepares the external runtime.
+[InstallMathlib]() prepares the runtime and [MathlibInstallation]() gives its
+project directory. Import that project with [LeanImport](paclet:Wolfram/LeanLink/ref/LeanImport),
+evaluate with [LeanEvaluate](paclet:Wolfram/LeanLink/ref/LeanEvaluate) and verify
+theorems with [LeanVerify](paclet:Wolfram/LeanLink/ref/LeanVerify).
+The environment interface requires the accompanying LeanLink development branch;
+existing MathlibLink session APIs remain supported.
 
 ## Basic Examples
+
+Import a focused mathlib module:
+
+```wl
+env = LeanImport["Mathlib.Data.Nat.Choose.Basic", "ProjectDir" -> MathlibInstallation[]["Directory"]]
+```
 
 Compute an exact binomial coefficient:
 
 ```wl
-WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic"}], MathlibCall[session, "Nat.choose", 10, 4], DeleteObject[session]]
+LeanEvaluate[env["Nat.choose"], 10, 4]
 ```
 
-Read a theorem from real analysis:
+Read a theorem's type:
 
 ```wl
-WithCleanup[session = StartMathlibSession["Imports" -> {"Mathlib.Analysis.Complex.Exponential"}], MathlibDeclaration[session, "Real.exp_add"]["TypeForm"], DeleteObject[session]]
+env["Nat.add_comm"]["TypeForm"]
+```
+
+Release the environment:
+
+```wl
+LeanFreeEnvironment[env]
 ```

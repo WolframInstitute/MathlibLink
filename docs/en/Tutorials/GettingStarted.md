@@ -2,117 +2,82 @@
 Template: TechNote
 Name: GettingStarted
 Title: Getting Started with MathlibLink
-Description: Open a mathlib session, find declarations and compute exact values
+Description: Import mathlib with LeanLink, inspect declarations and compute exact values
 Context: WolframInstitute`MathlibLink`
+ContextPath: [Wolfram`LeanLink`]
 Paclet: WolframInstitute/MathlibLink
 URI: WolframInstitute/MathlibLink/tutorial/GettingStarted
-Keywords: [mathlib, Lean, session, declarations]
+Keywords: [mathlib, Lean, imports, declarations]
 RelatedGuides: [MathlibLink]
 RelatedTutorials: [ArithmeticPatterns, ValuesAndProofs, PartialComputations]
 ---
 
-## Open a session
+## Import mathlib
 
 Mathlib contains definitions and theorems in algebra, analysis, geometry,
-number theory, topology and computability. MathlibLink uses one interface for
-the entire imported namespace. A declaration does not need a separate
-Wolfram wrapper before it can be inspected or used in a Lean expression.
+number theory, topology and computability. MathlibLink prepares its runtime;
+LeanLink supplies the same import, evaluation and proof operations used for
+other Lean projects. These examples require the environment interface in
+LeanLink's accompanying development branch.
 
-Install the pinned runtime once, if it is not already present. Setup reuses
-working Git, curl and elan installations and installs missing prerequisites in
-user directories:
+Install the pinned runtime once if needed:
 
 ```wl
 #| eval: false
 InstallMathlib[]
 ```
 
-Inspect the local installation:
+Find the prepared project:
 
 ```wl
-MathlibInstallation[]
+directory = MathlibInstallation[]["Directory"]
 ```
 
-The result separates overall readiness from the discovered tools.
-"Executables" gives the Elan, Lake, Git and Curl paths; "PathDirectories" gives
-the runtime directories to prepend when starting a child process.
-
-Open the full library:
+Import the modules used below:
 
 ```wl
-session = StartMathlibSession[]
+env = LeanImport["ProjectDir" -> directory, "Imports" -> {"Mathlib.Data.Nat.Sqrt", "Mathlib.Data.Nat.Choose.Basic"}]
 ```
 
-The default session exposes the whole library. For a focused computation,
-"Imports" can select smaller modules to reduce startup time and memory use;
-the following tutorials demonstrate this choice.
+Selected imports reduce startup time and memory use. To explore the entire
+library, use `"Imports" -> {"Mathlib"}` instead.
 
-## Find a declaration
+## Find and use a declaration
 
-Search for natural-number square-root declarations:
+Find natural-number square-root declarations:
 
 ```wl
-MathlibNames[session, "Nat.*sqrt*"]
+Select[Keys[env], StringMatchQ[#, "Nat.*sqrt*"] &]
 ```
 
-Inspect the square-root function:
+Read the square-root function's type:
 
 ```wl
-squareRoot = MathlibDeclaration[session, "Nat.sqrt"]
+env["Nat.sqrt"]["TypeForm"]
 ```
 
-Read its type:
+Compute the integer square root of 12345:
 
 ```wl
-squareRoot["TypeForm"]
+LeanEvaluate[env["Nat.sqrt"], 12345]
 ```
 
-Lean's `Nat` corresponds to exact nonnegative integers. Compute the integer
-square root of 12345:
-
-```wl
-MathlibCall[session, "Nat.sqrt", 12345]
-```
-
-Compare the result with a Wolfram computation:
+Compare with Wolfram Language:
 
 ```wl
 Floor[Sqrt[12345]]
 ```
 
-## Inspect a theorem
-
-The same declaration interface gives a theorem from real analysis:
-
-```wl
-exponentialLaw = MathlibDeclaration[session, "Real.exp_add"]
-```
-
-Read its quantified statement:
-
-```wl
-exponentialLaw["TypeForm"]
-```
-
-Find its upstream documentation:
-
-```wl
-Hyperlink["Exponential of a sum", exponentialLaw["DocumentationURL"]]
-```
-
-The installed runtime pins Lean 4.35.0 and mathlib v4.35.0. The linked
-[upstream reference](https://leanprover-community.github.io/mathlib4_docs/)
-tracks current mathlib; names or statements there can differ from the pinned
-runtime. The declaration's type in the active session is the one used by
-local computations and proofs.
+The evaluator starts on the first call and reuses the imports for later calls.
+Lean expressions and applications of imported terms use the same evaluator.
 
 ## Compute a family of values
 
-One Lean expression can produce an entire list. Compute binomial
-coefficients along row ten of Pascal's triangle:
+One Lean expression can return an entire list. Compute row ten of Pascal's
+triangle:
 
 ```wl
-row = MathlibEvaluate[session, "(List.range 11).map (fun k => Nat.choose 10 k)"]
+row = LeanEvaluate[env, "(List.range 11).map (fun k => Nat.choose 10 k)"]
 ```
 
 Plot the exact values:
@@ -121,18 +86,26 @@ Plot the exact values:
 ListPlot[row, DataRange -> {0, 10}, AxesLabel -> {"k", "Binomial coefficient"}]
 ```
 
-Inspect the continuity-of-composition theorem from topology:
+Batching related calculations reduces the number of transfers between the
+two languages. It does not change the mathematical algorithm.
+
+## Inspect a theorem
+
+Read a theorem's statement without evaluating it:
 
 ```wl
-MathlibDeclaration[session, "Continuous.comp"]["TypeForm"]
+env["Nat.add_comm"]["TypeForm"]
 ```
 
-The theorem remains accessible as a typed statement even though it is not a
-list-producing numerical computation. [Values and proofs](paclet:WolframInstitute/MathlibLink/tutorial/ValuesAndProofs)
-shows how these two uses fit together.
+[Values and proofs](paclet:WolframInstitute/MathlibLink/tutorial/ValuesAndProofs)
+shows how to add and verify a theorem using the same environment.
 
-Close the session after its last use:
+Release the imported environment and stop its evaluator:
 
 ```wl
-DeleteObject[session]
+LeanFreeEnvironment[env]
 ```
+
+The installed runtime pins Lean 4.35.0 and mathlib v4.35.0. The
+[upstream reference](https://leanprover-community.github.io/mathlib4_docs/)
+tracks current mathlib and may describe a newer version.
