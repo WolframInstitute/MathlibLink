@@ -48,7 +48,7 @@ Needs["Wolfram`LeanLink`"]
 Import the binomial-coefficient module from the installed mathlib project:
 
 ```wl
-env = LeanImport["Mathlib.Data.Nat.Choose.Basic", "ProjectDir" -> MathlibInstallation[]["Directory"]]
+env = LeanImport["Mathlib.Data.Nat.Choose.Basic", "ProjectDir" -> MathlibInstallation[]["Directory"], "PrepareEvaluation" -> True]
 ```
 
 Apply an imported function:
@@ -63,7 +63,8 @@ Evaluate a family of inputs in one call:
 LeanEvaluate[env, "(List.range 11).map (fun k => Nat.choose 10 k)"]
 ```
 
-The first evaluation starts a Lean process. Later calls reuse its imports.
+`"PrepareEvaluation" -> True` prepares the evaluator while importing modules.
+Later calls reuse it; `Needs` alone starts no Lean process.
 Batching inputs also reduces transfers between Wolfram Language and Lean.
 
 Compile a theorem using the same imports:

@@ -25,7 +25,8 @@ StartMathlibSession[opts : OptionsPattern[]] := Module[{directory, imports, load
 	];
 	If[KeyExistsQ[$mathlibEnvironments, cacheKey],
 		{environment, names} = Lookup[$mathlibEnvironments[cacheKey], {"Environment", "Names"}],
-		environment = Quiet[Check[mathlibInvoke["LeanImport", "ProjectDir" -> directory, "Imports" -> imports, "IncludeInternal" -> True], $Failed]];
+		environment = Quiet[Check[mathlibInvoke["LeanImport", "ProjectDir" -> directory, "Imports" -> imports, "IncludeInternal" -> True,
+			Sequence @@ FilterRules[{"PrepareEvaluation" -> True}, Options[Symbol["Wolfram`LeanLink`LeanImport"]]]], $Failed]];
 		If[! MatchQ[environment, Symbol["Wolfram`LeanLink`LeanEnvironment"][_Association]], Return[mathlibFailure["MathlibImportFailed", "Lean could not load the selected mathlib modules.", <|"Directory" -> directory, "Imports" -> imports|>]]];
 		names = Sort[Keys[environment]];
 		AssociateTo[$mathlibEnvironments, cacheKey -> <|"Environment" -> environment, "Names" -> names|>]

@@ -5,9 +5,10 @@ modules with LeanImport, inspects LeanTerms, evaluates with LeanEvaluate and
 checks theorems with LeanVerify. MathlibLink adds no separate evaluator or
 function whitelist. It remains independent of applications that use it.
 
-LeanLink owns imported environments and their evaluation processes. The first
-evaluation imports the selected modules into a worker; later calls reuse that
-worker. Each request starts from the same imported environment, so temporary
+LeanLink owns imported environments and their evaluation processes. A worker
+starts on the first evaluation, or during import with "PrepareEvaluation" -> True.
+Compatibility sessions enable this option for new imports when available.
+Later calls reuse that worker. Each request starts from the same imported environment, so temporary
 source declarations and errors do not affect subsequent requests. Computed
 values are not cached. Exact supported values cross the interface as JSON;
 noncomputable definitions and proofs remain LeanTerms.
