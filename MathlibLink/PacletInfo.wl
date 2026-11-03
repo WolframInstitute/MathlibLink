@@ -1,7 +1,7 @@
 PacletObject[<|
 	"Name" -> "WolframInstitute/MathlibLink",
 	"PublisherID" -> "WolframInstitute",
-	"Version" -> "0.1.1",
+	"Version" -> "0.1.2",
 	"WolframVersion" -> "15.0+",
 	"Description" -> "Connect Wolfram Language to mathlib for computation and checked proofs",
 	"Creator" -> "Wolfram Institute",
