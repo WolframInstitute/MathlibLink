@@ -53,7 +53,9 @@ documentationIssues[file_String] := Module[{notebook, outputs, calls, failures, 
 	notebook = Quiet[Check[Get[file], $Failed]];
 	If[! MatchQ[notebook, _Notebook], Return[<|"Notebook" -> "Missing or unreadable"|>]];
 	outputs = Cases[notebook, Cell[BoxData[boxes_], "Output", ___] :> boxes, Infinity];
-	If[! FreeQ[notebook, Cell[_, "Message", ___]], AssociateTo[issues, "Messages" -> "Example emitted a message"]];
+	With[{messages = Cases[notebook, Cell[body_, "Message", ___] :> ToString[body, InputForm], Infinity]},
+		If[messages =!= {}, AssociateTo[issues, "Messages" -> messages]]
+	];
 	calls = DeleteDuplicates[Flatten[Cases[outputs,
 		RowBox[{head_, "[", ___}] :> Cases[{head}, name_String /; name =!= "" && MemberQ[{
 			"LeanImport", "LeanImportString", "LeanEvaluate", "LeanVerify", "LeanFreeEnvironment",
@@ -73,7 +75,25 @@ documentationIssues[file_String] := Module[{notebook, outputs, calls, failures, 
 
 checkDocumentation[files_List] := Module[{issues},
 	issues = Select[AssociationMap[documentationIssues, DeleteDuplicates[files]], # =!= <||> &];
-	If[issues =!= <||>, Print["Documentation examples failed: ", InputForm[issues]]; Exit[1]]
+	If[issues =!= <||>, Print["Documentation examples failed: ", ToString[issues, InputForm]]; Exit[1]]
+];
+
+(* Hosted entitlements can briefly fail between fresh kernels. Retry only
+   before the script starts, never after an example has begun evaluating. *)
+$pageWorkerStarted = "MathlibLink documentation worker started.";
+runPageWorker[worker_String] := Module[{result, output},
+	Do[
+		result = RunProcess[{"wolframscript", "-file", worker}];
+		output = If[AssociationQ[result], StringJoin[Lookup[result, {"StandardOutput", "StandardError"}, ""]], ""];
+		If[! AssociationQ[result] || result["ExitCode"] === 0 ||
+			! StringContainsQ[output, "No valid password found."] || StringContainsQ[output, $pageWorkerStarted] || attempt === 4,
+			Break[]
+		];
+		Print["Retrying page-kernel license startup (", attempt, "/3)."];
+		Pause[2^attempt],
+		{attempt, 4}
+	];
+	result
 ];
 
 (* Imported Lean regions live until kernel exit. Evaluate each page in a fresh
@@ -82,13 +102,14 @@ checkDocumentation[files_List] := Module[{issues},
 buildPage[file_String] := Module[{worker, directories, program, result},
 	directories = DeleteDuplicates[Flatten[(#["Location"] & /@ PacletFind[#] &) /@ documentationDependencies]];
 	worker = CreateTemporary[];
-	program = "Scan[PacletDirectoryLoad, " <> ToString[directories, InputForm, CharacterEncoding -> "PrintableASCII"] <> "];\n" <>
+	program = "Print[" <> ToString[$pageWorkerStarted, InputForm] <> "];\n" <>
+		"Scan[PacletDirectoryLoad, " <> ToString[directories, InputForm, CharacterEncoding -> "PrintableASCII"] <> "];\n" <>
 		"Block[{$ScriptCommandLine = " <> ToString[{script, "page", file}, InputForm, CharacterEncoding -> "PrintableASCII"] <>
 		"}, Get[" <> ToString[script, InputForm, CharacterEncoding -> "PrintableASCII"] <> "]];\nExit[1];\n";
 	Print["Evaluating ", FileNameTake[file]];
 	result = WithCleanup[
 		If[Export[worker, program, "Text", CharacterEncoding -> "UTF-8"] === $Failed, $Failed,
-			RunProcess[{"wolframscript", "-file", worker}]],
+			runPageWorker[worker]],
 		If[FileExistsQ[worker], DeleteFile[worker]]
 	];
 	If[! AssociationQ[result], Print["The page worker did not return a result."]; Exit[1]];
