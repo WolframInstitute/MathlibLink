@@ -47,8 +47,37 @@ pageCall[function_String, arguments___] := If[
 	Symbol["WolframInstitute`PacletPage`" <> function][arguments]
 ];
 
+(* Conversion can succeed while an example prints a message or returns its
+   input. Check saved outputs too, including pages reused from the cache. *)
+documentationIssues[file_String] := Module[{notebook, outputs, calls, failures, issues = <||>},
+	notebook = Quiet[Check[Get[file], $Failed]];
+	If[! MatchQ[notebook, _Notebook], Return[<|"Notebook" -> "Missing or unreadable"|>]];
+	outputs = Cases[notebook, Cell[BoxData[boxes_], "Output", ___] :> boxes, Infinity];
+	If[! FreeQ[notebook, Cell[_, "Message", ___]], AssociateTo[issues, "Messages" -> "Example emitted a message"]];
+	calls = DeleteDuplicates[Flatten[Cases[outputs,
+		RowBox[{head_, "[", ___}] :> Cases[{head}, name_String /; name =!= "" && MemberQ[{
+			"LeanImport", "LeanImportString", "LeanEvaluate", "LeanVerify", "LeanFreeEnvironment",
+			"StartMathlibSession", "MathlibNames", "MathlibDeclaration", "MathlibEvaluate", "MathlibCall", "ProveMathlib",
+			"ArrayPlot", "ListPlot", "ListStepPlot", "Boole"
+		}, Last[StringSplit[name, "`"]]], Infinity], Infinity]]];
+	If[calls =!= {}, AssociateTo[issues, "UnevaluatedCalls" -> calls]];
+	If[! FreeQ[outputs, "$Failed" | "$Aborted" | "$TimedOut"], AssociateTo[issues, "Evaluation" -> "Failed or interrupted"]];
+	failures = DeleteDuplicates[Cases[outputs, HoldPattern[Failure[tag_, _Association]] :> tag, Infinity]];
+	(* These two pages intentionally demonstrate rejection of an admitted proof. *)
+	If[MemberQ[{"ProveMathlib.nb", "ValuesAndProofs.nb"}, FileNameTake[file]], failures = DeleteCases[failures, "MathlibUntrustedProof"]];
+	If[FileNameTake[file] === "InstallMathlib.nb", failures = DeleteCases[failures, "MathlibInstallCancelled"]];
+	If[failures =!= {}, AssociateTo[issues, "Failures" -> failures]];
+	issues
+];
+
+checkDocumentation[files_List] := Module[{issues},
+	issues = Select[AssociationMap[documentationIssues, DeleteDuplicates[files]], # =!= <||> &];
+	If[issues =!= <||>, Print["Documentation examples failed: ", InputForm[issues]]; Exit[1]]
+];
+
 (* Imported Lean regions live until kernel exit. Evaluate each page in a fresh
-   licensed process; PacletPage then assembles its own verified page caches. *)
+   licensed process without reusing individual example results. PacletPage
+   then assembles the checked page caches without reevaluating them. *)
 buildPage[file_String] := Module[{worker, directories, program, result},
 	directories = DeleteDuplicates[Flatten[(#["Location"] & /@ PacletFind[#] &) /@ documentationDependencies]];
 	worker = CreateTemporary[];
@@ -79,7 +108,7 @@ If[mode =!= "publish",
 		"Source" -> source,
 		"Files" -> If[mode === "page", {If[page === definition, First[documentationFiles], page]}, All],
 		"Definition" -> If[mode === "page" && page =!= definition, None, definition],
-		"Parallel" -> False, "Prune" -> (mode =!= "page"), "Dependencies" -> documentationDependencies,
+		"Parallel" -> False, "Prune" -> (mode =!= "page"), "UseCache" -> (mode =!= "page"), "Dependencies" -> documentationDependencies,
 		Sequence @@ documentationOptions
 	];
 	If[! AssociationQ[build] || Lookup[build, "Failed", {"Build"}] =!= {} || Lookup[build, "Unevaluated", <||>] =!= <||>,
@@ -91,6 +120,7 @@ If[mode =!= "publish",
 	If[mode =!= "page" && Lookup[build, "Converted", {}] =!= {},
 		Print["Documentation changed during page evaluation. Run the build again."]; Exit[1]
 	];
+	checkDocumentation[Join[build["Notebooks"], Replace[Lookup[build, "Definition", None], {file_String :> {file}, _ -> {}}]]];
 	Print[Length[build["Notebooks"]], " documentation notebooks built."];
 	If[mode === "page", Exit[0]]
 ];
@@ -98,6 +128,7 @@ If[mode =!= "build",
 	distribution = FileNameJoin[{repository, "dist"}];
 	If[! DirectoryQ[distribution], CreateDirectory[distribution]];
 	If[mode === "publish",
+		checkDocumentation[Append[FileNames["*.nb", FileNameJoin[{paclet, "Documentation", "English"}], Infinity], FileNameJoin[{paclet, "ResourceDefinition.nb"}]]];
 		expected = FileNameJoin[{distribution, "WolframInstitute__MathlibLink-" <> PacletObject[File[paclet]]["Version"] <> ".paclet"}];
 		If[! FileExistsQ[expected], Print["Restore the verified archive to dist, or run make check-publish first."]; Exit[1]];
 		expectedHash = FileHash[expected, "SHA256"];
