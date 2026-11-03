@@ -60,7 +60,8 @@ VerificationTest[
 			WolframInstitute`MathlibLink`PackageScope`mathlibEnsureElan = (<|"Elan" -> "/tool", "Lake" -> "/tool"|> &),
 			WolframInstitute`MathlibLink`PackageScope`mathlibEnsureGit = ("/tool" &),
 			WolframInstitute`MathlibLink`PackageScope`mathlibEnsureCurl = ("/tool" &),
-			PacletFind = ({} &), PacletInstall = Function[Null, AppendTo[$ContextPath, "InstallerFixture`"]; $Failed]
+			WolframInstitute`MathlibLink`PackageScope`mathlibInstallLean = Function[Null,
+				AppendTo[$ContextPath, "InstallerFixture`"]; Failure["LeanLinkInstallFailed", <||>]]
 		}, InstallMathlib[]];
 		{result["Tag"], $ContextPath === before}
 	], {"LeanLinkInstallFailed", True}, TestID -> "dependency-installation-preserves-caller-context-path"
@@ -73,12 +74,12 @@ VerificationTest[
 		WolframInstitute`MathlibLink`PackageScope`mathlibEnsureGit = ("/tool" &),
 		WolframInstitute`MathlibLink`PackageScope`mathlibEnsureCurl = ("/tool" &),
 		WolframInstitute`MathlibLink`PackageScope`mathlibInstallationReadyQ = (True &),
-		PacletFind = ({PacletObject[<|"Name" -> "Wolfram/LeanLink", "Version" -> "1.2.5"|>]} &),
-		PacletInstall = (Throw["Unexpected installation"] &), StartProcess = (Throw["Unexpected process"] &)
+		WolframInstitute`MathlibLink`PackageScope`mathlibInstallLean = Function[Null, Sow["Checked latest LeanLink"]; True],
+		StartProcess = (Throw["Unexpected process"] &)
 	}, With[{result = Reap[InstallMathlib["ProgressFunction" -> Function[{stage, fraction}, Sow[{stage, fraction}]]]]},
 		{MatchQ[First[result], _File], Last[result]}
-	]], {True, {{{"Preparing...", None}, {"Checking...", None}}}},
-	TestID -> "ready-runtime-reports-stages-without-installing"
+	]], {True, {{{"Preparing...", None}, "Checked latest LeanLink", {"Checking...", None}}}},
+	TestID -> "ready-mathlib-still-checks-latest-leanlink"
 ]
 
 VerificationTest[
@@ -93,12 +94,42 @@ VerificationTest[
 				WolframInstitute`MathlibLink`PackageScope`mathlibInstallationReadyQ = (False &),
 				WolframInstitute`MathlibLink`PackageScope`mathlibInstallRun =
 					(Throw[Failure["MathlibInstallCancelled", <||>], "MathlibInstall"] &),
-				PacletFind = ({PacletObject[<|"Name" -> "Wolfram/LeanLink", "Version" -> "1.2.5"|>]} &)
+				WolframInstitute`MathlibLink`PackageScope`mathlibInstallLean = (True &)
 			}, InstallMathlib["Directory" -> target]];
 			{result["Tag"], DirectoryQ[target]},
 			DeleteDirectory[temporary, DeleteContents -> True]
 		]
 	], {"MathlibInstallCancelled", False}, TestID -> "cancelled-clone-removes-only-new-owned-directory"
+]
+
+(* The publication changes independently of the installed mathlib checkout. *)
+latestLeanFixture[version_, loaded_ : False, unavailable_ : False] := Module[{latest, checks = 0, installs = 0, result},
+	latest = PacletObject[<|"Name" -> "Wolfram/LeanLink", "Version" -> "9.1.0"|>];
+	result = Block[{
+		$Packages = If[loaded, {"Wolfram`LeanLink`"}, {}],
+		WolframInstitute`MathlibLink`PackageScope`$mathlibLeanNeedsRestart = False,
+		WolframInstitute`MathlibLink`PackageScope`mathlibLeanRelease = Function[Null,
+			checks++;
+			If[unavailable, Failure["LeanLinkUpdateCheckFailed", <||>], <|"Resource" -> "latest-resource", "Paclet" -> latest|>]],
+		PacletFind = Function[Null, If[version === None, {}, {PacletObject[<|"Name" -> "Wolfram/LeanLink", "Version" -> version|>]}]],
+		PacletInstall = Function[source, If[source === "latest-resource", installs++; latest, $Failed]]
+	}, WolframInstitute`MathlibLink`PackageScope`mathlibInstallLean[]];
+	{If[FailureQ[result], result["Tag"], result["Version"]], checks, installs}
+]
+
+VerificationTest[latestLeanFixture[None], {"9.1.0", 1, 1}, TestID -> "missing-leanlink-installs-current-publication"]
+VerificationTest[latestLeanFixture["9.0.0"], {"9.1.0", 1, 1}, TestID -> "installed-leanlink-updates-to-current-publication"]
+VerificationTest[latestLeanFixture["9.1.0"], {"9.1.0", 1, 0}, TestID -> "current-leanlink-still-checks-publication-without-reinstalling"]
+VerificationTest[latestLeanFixture["9.2.0"], {"9.2.0", 1, 0}, TestID -> "newer-local-leanlink-is-not-downgraded"]
+VerificationTest[latestLeanFixture["9.0.0", True], {"LeanLinkRestartRequired", 1, 1}, TestID -> "updated-loaded-leanlink-requires-kernel-restart"]
+VerificationTest[latestLeanFixture["9.1.0", True], {"9.1.0", 1, 0}, TestID -> "unchanged-loaded-leanlink-does-not-require-restart"]
+VerificationTest[latestLeanFixture["9.1.0", False, True], {"LeanLinkUpdateCheckFailed", 1, 0}, TestID -> "failed-update-check-is-not-reported-as-current"]
+
+VerificationTest[
+	Block[{WolframInstitute`MathlibLink`PackageScope`$mathlibLeanNeedsRestart = True,
+		Needs = (Throw["Unexpected reload"] &)},
+		WolframInstitute`MathlibLink`PackageScope`mathlibLoadLean[]["Tag"]
+	], "LeanLinkRestartRequired", TestID -> "loaded-native-library-is-not-reused-after-update"
 ]
 
 (* kill -0 also succeeds for a dead Linux zombie awaiting its parent's wait.

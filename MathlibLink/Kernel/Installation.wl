@@ -1,7 +1,7 @@
 PackageExported[{InstallMathlib, MathlibInstallation}]
-PackageScoped[{mathlibInstallationReadyQ, mathlibInstallRun, mathlibInstallStage, mathlibCheckCancellation, mathlibReportProgress}]
+PackageScoped[{mathlibInstallationReadyQ, mathlibLeanRelease, mathlibInstallLean, mathlibInstallRun, mathlibInstallStage, mathlibCheckCancellation, mathlibReportProgress}]
 
-InstallMathlib::usage = "InstallMathlib[] installs the pinned Lean, LeanLink and mathlib releases. InstallMathlib[\"Directory\" -> path] uses a chosen directory."
+InstallMathlib::usage = "InstallMathlib[] installs the latest LeanLink and the pinned Lean and mathlib runtime. InstallMathlib[\"Directory\" -> path] uses a chosen directory."
 MathlibInstallation::usage = "MathlibInstallation[] gives the mathlib installation status, versions and directory."
 Options[InstallMathlib] = {"Directory" -> Automatic, "ProgressFunction" -> (Null &), "CancellationFunction" -> (False &)}
 Options[MathlibInstallation] = {"Directory" -> Automatic}
@@ -77,14 +77,15 @@ mathlibInstallationReadyQ[directory_String] := Module[{marker, runtime = mathlib
 	]
 ]
 
-MathlibInstallation[opts : OptionsPattern[]] := Module[{directory, runtime = mathlibRuntime[], status},
+MathlibInstallation[opts : OptionsPattern[]] := Module[{directory, runtime = mathlibRuntime[], status, installed},
 	If[! mathlibOptionsQ[MathlibInstallation, {opts}], Return[mathlibFailure["MathlibInvalidOption", "Unknown installation option."]]];
 	directory = mathlibDirectory[OptionValue["Directory"]];
 	If[FailureQ[directory], Return[directory]];
 	status = Which[mathlibInstallationReadyQ[directory], "Ready", DirectoryQ[directory], "Needs setup", True, "Not installed"];
+	installed = First[PacletFind["Wolfram/LeanLink"], None];
 	<|"Status" -> status, "Directory" -> directory, "MathlibDirectory" -> directory,
 		"Toolchain" -> runtime["LeanToolchain"], "Revision" -> runtime["MathlibRevision"],
-		"LeanLinkMinimumVersion" -> runtime["LeanLinkMinimumVersion"], "DocumentationURL" -> runtime["DocumentationURL"],
+		"LeanLinkVersion" -> If[installed === None, Missing["NotInstalled"], installed["Version"]], "DocumentationURL" -> runtime["DocumentationURL"],
 		"Executables" -> mathlibExecutables[], "PathDirectories" -> mathlibPathDirectories[]|>
 ]
 
@@ -99,8 +100,47 @@ InstallMathlib[opts : OptionsPattern[]] := Module[{directory, progress, cancella
 	Catch[Block[{$ContextPath = $ContextPath, $installProgress = progress, $installCancellation = cancellation}, installMathlib[directory]], "MathlibInstall"]
 ]
 
+(* Resolve the publisher's current resource on every explicit setup call. A
+   cached installation or a lagging paclet-site index must not pin LeanLink. *)
+mathlibLeanRelease[] := Module[{resource, latest},
+	resource = Quiet[ResourceObject[CloudObject[mathlibRuntime[]["LeanLinkResource"]]]];
+	mathlibCheckCancellation[];
+	If[! MatchQ[resource, _ResourceObject],
+		Return[mathlibFailure["LeanLinkUpdateCheckFailed", "The latest LeanLink release could not be checked. Retry InstallMathlib[]."]]
+	];
+	latest = Quiet[PacletObject[resource]];
+	If[! MatchQ[latest, _PacletObject] || latest["Name"] =!= "Wolfram/LeanLink" || ! StringQ[latest["Version"]],
+		Return[mathlibFailure["LeanLinkUpdateCheckFailed", "The published LeanLink paclet could not be read. Retry InstallMathlib[]."]]
+	];
+	<|"Resource" -> resource, "Paclet" -> latest|>
+]
+
+mathlibInstallLean[] := Module[{release, resource, latest, installed, result, loaded},
+	mathlibInstallStage["Checking LeanLink..."];
+	release = mathlibLeanRelease[];
+	If[FailureQ[release], Return[release]];
+	{resource, latest} = Lookup[release, {"Resource", "Paclet"}];
+	If[TrueQ[$mathlibLeanNeedsRestart],
+		Return[mathlibFailure["LeanLinkRestartRequired", "LeanLink was updated. Restart the kernel, then run InstallMathlib[] again."]]
+	];
+	installed = First[PacletFind["Wolfram/LeanLink"], None];
+	If[installed =!= None && mathlibVersionQ[installed["Version"], latest["Version"]], Return[installed]];
+	loaded = MemberQ[$Packages, "Wolfram`LeanLink`"];
+	mathlibInstallStage["Installing LeanLink..."];
+	result = Quiet[Check[PacletInstall[resource], $Failed]];
+	If[MatchQ[result, _PacletObject] && loaded, $mathlibLeanNeedsRestart = True];
+	mathlibCheckCancellation[];
+	If[! MatchQ[result, _PacletObject],
+		Return[mathlibFailure["LeanLinkInstallFailed", "LeanLink could not be installed.", <|"Result" -> result|>]]
+	];
+	If[loaded,
+		Return[mathlibFailure["LeanLinkRestartRequired", "LeanLink was updated. Restart the kernel, then run InstallMathlib[] again.", <|"Version" -> result["Version"]|>]]
+	];
+	result
+]
+
 installMathlib[directory_String] := Module[{
-	runtime = mathlibRuntime[], elan, lake, git, result, installed, log, commands, head, parent, cloned = False
+	runtime = mathlibRuntime[], elan, lake, git, result, log, commands, head, parent, cloned = False
 },
 	mathlibInstallStage["Preparing..."];
 	With[{tools = mathlibEnsureElan[]},
@@ -110,13 +150,8 @@ installMathlib[directory_String] := Module[{
 	git = mathlibEnsureGit[];
 	If[FailureQ[git], Return[git]];
 	With[{curl = mathlibEnsureCurl[]}, If[FailureQ[curl], Return[curl]]];
-	installed = PacletFind["Wolfram/LeanLink"];
-	If[installed === {} || ! mathlibVersionQ[First[installed]["Version"], runtime["LeanLinkMinimumVersion"]],
-		mathlibInstallStage["Installing..."];
-		result = Quiet[Check[PacletInstall[runtime["LeanLinkArchive"]], $Failed]];
-		mathlibCheckCancellation[];
-		If[! MatchQ[result, _PacletObject], Return[mathlibFailure["LeanLinkInstallFailed", "LeanLink could not be installed.", <|"Result" -> result|>]]]
-	];
+	result = mathlibInstallLean[];
+	If[FailureQ[result], Return[result]];
 	mathlibInstallStage["Checking..."];
 	If[mathlibInstallationReadyQ[directory], mathlibCheckCancellation[]; Return[File[directory]]];
 	parent = DirectoryName[directory];
@@ -165,7 +200,7 @@ installMathlib[directory_String] := Module[{
 		];
 		mathlibInstallStage["Checking..."];
 		Export[FileNameJoin[{directory, "mathliblink-installation.json"}], <|"Revision" -> runtime["MathlibRevision"], "Toolchain" -> runtime["LeanToolchain"], "ManifestSHA256" -> IntegerString[FileHash[FileNameJoin[{directory, "lake-manifest.json"}], "SHA256"], 16, 64]|>, "RawJSON"];
-		If[mathlibInstallationReadyQ[directory], File[directory], mathlibFailure["LeanLinkCompatibility", "Mathlib was built, but the compatible LeanLink runtime could not load. Restart the kernel with LeanLink 1.2.5 and the pinned Lean toolchain.", <|"Toolchain" -> runtime["LeanToolchain"], "URL" -> runtime["LeanLinkArchive"]|>]],
+		If[mathlibInstallationReadyQ[directory], File[directory], mathlibFailure["LeanLinkCompatibility", "Mathlib was built, but LeanLink could not load its runtime. Restart the kernel and rerun InstallMathlib[].", <|"Toolchain" -> runtime["LeanToolchain"], "URL" -> runtime["LeanLinkResource"]|>]],
 		Close[log]
 	]
 ]

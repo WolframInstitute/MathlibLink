@@ -15,17 +15,18 @@ do not affect subsequent requests. Computed
 values are not cached. Exact supported values cross the interface as JSON;
 noncomputable definitions and proofs remain LeanTerms.
 
-The environment interface is developed with LeanLink's
-feature/environment-evaluation branch. Released LeanLink versions remain
-usable through the existing MathlibLink session APIs. Those APIs are
-compatibility adapters: when the new interface is available, evaluation,
-source imports and strict proof verification delegate to LeanLink.
+The existing MathlibLink session APIs remain compatibility adapters:
+evaluation, source imports and strict proof verification delegate to LeanLink.
+Readiness checks the loaded evaluator capabilities instead of a version number.
 
 Loading the paclet performs no installation or network access. InstallMathlib
 explicitly prepares elan, Git and curl when needed, then installs the pinned Lean
-toolchain, LeanLink and mathlib. Elan's global default is not changed. Mathlib
-lives in the user's application-data directory; the paclet carries only small
-version manifests. Setup downloads
+toolchain and mathlib. Every setup call resolves LeanLink's current published
+resource and updates an older installation, including when mathlib is already
+ready. A changed LeanLink that is loaded in the current kernel requires a
+restart; native libraries are not reloaded in place. Elan's global default is
+not changed. Mathlib lives in the user's application-data directory; the paclet
+carries only small version manifests. Setup downloads
 the complete cache to make all modules available and builds the Mathlib target.
 The upstream lake-manifest.json is preserved; setup never runs lake update,
 which would advance dependencies beyond the pinned release.

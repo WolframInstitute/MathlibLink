@@ -1,6 +1,8 @@
 PackageScoped[{mathlibFailure, mathlibLoadLean, mathlibInvoke, mathlibOptionsQ, mathlibTimeQ, mathlibModuleQ, mathlibDirectory, mathlibRuntime, mathlibExecutable, mathlibRun, mathlibVersionQ, mathlibLeanDirectory, mathlibBridgeReadyQ, mathlibElanHome, mathlibToolsDirectory, mathlibExecutables, mathlibPathDirectories, mathlibEnvironment}]
 
-PackageScoped[mathlibDirectLeanQ]
+PackageScoped[{mathlibDirectLeanQ, $mathlibLeanNeedsRestart}]
+
+$mathlibLeanNeedsRestart = False
 
 mathlibDirectLeanQ[] := Names["Wolfram`LeanLink`LeanVerify"] =!= {} && With[{verify = Symbol["Wolfram`LeanLink`LeanVerify"]}, DownValues[verify] =!= {}]
 
@@ -22,11 +24,18 @@ mathlibVersionQ[installed_String, minimum_String] := With[{
 mathlibInvoke[name_String, arguments___] := Symbol["Wolfram`LeanLink`" <> name][arguments]
 
 mathlibLoadLean[] := Module[{installed = PacletFind["Wolfram/LeanLink"], result},
-	If[installed === {} || ! mathlibVersionQ[First[installed]["Version"], mathlibRuntime[]["LeanLinkMinimumVersion"]],
-		Return[mathlibFailure["LeanLinkRequired", "Install the compatible LeanLink release with InstallMathlib[]."]]
+	If[TrueQ[$mathlibLeanNeedsRestart],
+		Return[mathlibFailure["LeanLinkRestartRequired", "LeanLink was updated in this kernel. Restart the kernel before using it."]]
+	];
+	If[installed === {},
+		Return[mathlibFailure["LeanLinkRequired", "Install LeanLink with InstallMathlib[]."]]
 	];
 	result = Block[{$ContextPath = $ContextPath}, Quiet[Check[Needs["Wolfram`LeanLink`"], $Failed]]];
-	If[result === Null, True, mathlibFailure["LeanLinkUnavailable", "LeanLink could not load. Restart the kernel after updating it.", <|"Result" -> result|>]]
+	Which[
+		result =!= Null, mathlibFailure["LeanLinkUnavailable", "LeanLink could not load. Restart the kernel after updating it.", <|"Result" -> result|>],
+		! mathlibDirectLeanQ[], mathlibFailure["LeanLinkUpdateRequired", "The loaded LeanLink does not support environment evaluation. Run InstallMathlib[] and restart the kernel."],
+		True, True
+	]
 ]
 
 mathlibElanHome[] := Replace[Environment["ELAN_HOME"], Except[_String] -> FileNameJoin[{$HomeDirectory, ".elan"}]]

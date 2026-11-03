@@ -49,7 +49,7 @@ runs:
           If[! MatchQ[result, File[_String]], Print[InputForm[result]]; Exit[1]];
           status = MathlibInstallation[];
           If[! AssociationQ[status] || status["Status"] =!= "Ready", Print[InputForm[status]]; Exit[1]];
-          Print[KeyTake[status, {"Status", "Toolchain", "Revision"}]];'
+          Print[KeyTake[status, {"Status", "LeanLinkVersion", "Toolchain", "Revision"}]];'
 
     - name: Install pinned documentation tools
       if: inputs.documentation == 'true'

@@ -1,9 +1,9 @@
 # CI and releases
 
 MathlibLink runs locally on Linux x86-64, Windows x86-64 and macOS ARM64.
-GitHub hosts release archives; the installer downloads the pinned Lean,
-mathlib, LeanLink and missing command-line tools. Computations and proof checks
-run on the user's machine.
+GitHub hosts release archives; the installer downloads the pinned Lean and
+mathlib runtime, the latest published LeanLink and missing command-line tools.
+Computations and proof checks run on the user's machine.
 
 ## Workflows
 

@@ -19,7 +19,7 @@ RelatedTutorials: [GettingStarted]
 
 ## Details & Options
 
-- The result includes "Status", "Directory", "Toolchain", "Revision", "DocumentationURL", "Executables" and "PathDirectories".
+- The result includes "Status", "Directory", "Toolchain", "Revision", "LeanLinkVersion", "DocumentationURL", "Executables" and "PathDirectories".
 - "Status" is "Ready", "Needs setup" or "Not installed". Readiness checks the pinned checkout, built library and compatible LeanLink runtime.
 - "Executables" is an association with "Elan", "Lake", "Git" and "Curl" keys. Each value is an absolute executable path or Missing if no executable was found.
 - "PathDirectories" lists existing runtime directories needed by child processes, including the helper and library directories of managed Git and curl installations. Prepend them to the child process's PATH when using these tools outside MathlibLink.
