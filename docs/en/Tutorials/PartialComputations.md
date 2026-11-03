@@ -4,7 +4,6 @@ Name: PartialComputations
 Title: Observing Partial Computations
 Description: Inspect a formal computation model and compare bounded observations with its semantics
 Context: WolframInstitute`MathlibLink`
-ContextPath: [Wolfram`LeanLink`]
 Paclet: WolframInstitute/MathlibLink
 URI: WolframInstitute/MathlibLink/tutorial/PartialComputations
 Keywords: [computability, partial recursive functions, fuel, formal model]
@@ -24,13 +23,13 @@ connects codes to the partial-recursive function class.
 Import the partial-recursive code model:
 
 ```wl
-env = LeanImport["ProjectDir" -> MathlibInstallation[]["Directory"], "Imports" -> {"Mathlib.Computability.PartrecCode"}]
+session = StartMathlibSession["Imports" -> {"Mathlib.Computability.PartrecCode"}]
 ```
 
 Read its quantified statement:
 
 ```wl
-env["Nat.Partrec.Code.exists_code"]["TypeForm"]
+MathlibDeclaration[session, "Nat.Partrec.Code.exists_code"]["TypeForm"]
 ```
 
 The theorem gives a code for every function in the stated class. It does not
@@ -46,15 +45,20 @@ a count of Wolfram evaluation steps.
 Compose successor with itself and observe inputs 0 through 15 with fuel 20:
 
 ```wl
-LeanEvaluate[env, "(List.range 16).map (fun n => Nat.Partrec.Code.evaln 20 (.comp .succ .succ) n)"]
+MathlibEvaluate[session, "(List.range 16).map (fun n => Nat.Partrec.Code.evaln 20 (.comp .succ .succ) n)"]
 ```
 
-Measure which inputs finish as fuel increases from 1 through 20. Display
-the completion map with increasing fuel to the right. Black cells mark a
-returned value; white cells mark an unfinished observation:
+Measure which inputs finish as fuel increases from 1 through 20:
 
 ```wl
-ArrayPlot[Reverse[Transpose[Boole[finished = LeanEvaluate[env, "(List.range 20).map (fun k => (List.range 16).map (fun n => (Nat.Partrec.Code.evaln (k + 1) (.comp .succ .succ) n).isSome))"]]]], DataRange -> {{1, 20}, {0, 15}}, FrameTicks -> Automatic, FrameLabel -> {"Input", "Fuel"}]
+finished = MathlibEvaluate[session, "(List.range 20).map (fun k => (List.range 16).map (fun n => (Nat.Partrec.Code.evaln (k + 1) (.comp .succ .succ) n).isSome))"];
+```
+
+Display the completion map with increasing fuel to the right. Black cells mark
+a returned value; white cells mark an unfinished observation:
+
+```wl
+ArrayPlot[Reverse[Transpose[Boole[finished]]], DataRange -> {{1, 20}, {0, 15}}, FrameTicks -> Automatic, FrameLabel -> {"Input", "Fuel"}]
 ```
 
 Count completed inputs at each fuel level:
@@ -73,13 +77,13 @@ Inspect the theorem that relates a returned bounded result to the partial
 semantics:
 
 ```wl
-env["Nat.Partrec.Code.evaln_sound"]["TypeForm"]
+MathlibDeclaration[session, "Nat.Partrec.Code.evaln_sound"]["TypeForm"]
 ```
 
 Inspect the converse statement for a computation that has a semantic result:
 
 ```wl
-env["Nat.Partrec.Code.evaln_complete"]["TypeForm"]
+MathlibDeclaration[session, "Nat.Partrec.Code.evaln_complete"]["TypeForm"]
 ```
 
 These declarations specify the connection between finite observations and the
@@ -87,8 +91,8 @@ formal semantics. A compiler targeting this model needs its own simulation
 proof before the model's computability results can be transferred to another
 language.
 
-Release the environment:
+Close the session:
 
 ```wl
-LeanFreeEnvironment[env]
+DeleteObject[session]
 ```

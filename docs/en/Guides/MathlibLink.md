@@ -15,7 +15,6 @@ RelatedTutorials: [GettingStarted, ArithmeticPatterns, ValuesAndProofs, PartialC
 MathlibLink prepares mathlib for use through LeanLink. Imported functions,
 theorems, structures and instances are available as Lean terms. Computable
 expressions return Wolfram values; noncomputable definitions remain typed terms.
-The environment interface requires the accompanying LeanLink development branch.
 
 ## Functions
 
@@ -24,22 +23,9 @@ The environment interface requires the accompanying LeanLink development branch.
 - `InstallMathlib` install the pinned Lean and mathlib runtime
 - `MathlibInstallation` inspect its status, directory and versions
 
-### Working through LeanLink
+### Importing modules
 
-- [LeanImport](paclet:Wolfram/LeanLink/ref/LeanImport) import mathlib modules
-- [LeanEnvironment](paclet:Wolfram/LeanLink/ref/LeanEnvironment) hold their declarations
-- [LeanTerm](paclet:Wolfram/LeanLink/ref/LeanTerm) inspect a declaration's type, definition and axioms
-- [LeanEvaluate](paclet:Wolfram/LeanLink/ref/LeanEvaluate) evaluate expressions and apply imported functions
-- [LeanImportString](paclet:Wolfram/LeanLink/ref/LeanImportString) compile additional definitions and theorems
-- [LeanVerify](paclet:Wolfram/LeanLink/ref/LeanVerify) check a theorem in Lean's kernel and audit its axioms
-- [LeanFreeEnvironment](paclet:Wolfram/LeanLink/ref/LeanFreeEnvironment) release an environment and stop its evaluator
-
-### Compatibility sessions
-
-Existing session-based code remains supported, including with released LeanLink
-versions. With the new environment interface, these calls delegate to LeanLink.
-
-- `StartMathlibSession` open a compatibility session
+- `StartMathlibSession` import all mathlib declarations or selected modules
 - `MathlibSession` represent the lifetime of a session and its objects
 
 ### Declarations and expressions

@@ -4,7 +4,6 @@ Name: ArithmeticPatterns
 Title: Exact Arithmetic Patterns
 Description: Compute binomial coefficients, common divisors and totients in Lean and plot the results
 Context: WolframInstitute`MathlibLink`
-ContextPath: [Wolfram`LeanLink`]
 Paclet: WolframInstitute/MathlibLink
 URI: WolframInstitute/MathlibLink/tutorial/ArithmeticPatterns
 Keywords: [exact arithmetic, binomial coefficients, greatest common divisor, totient]
@@ -19,13 +18,13 @@ with a Wolfram computation before plotting a larger pattern. Import the
 binomial-coefficient and totient modules used in this experiment:
 
 ```wl
-env = LeanImport["ProjectDir" -> MathlibInstallation[]["Directory"], "Imports" -> {"Mathlib.Data.Nat.Choose.Basic", "Mathlib.Data.Nat.Totient"}]
+session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic", "Mathlib.Data.Nat.Totient"}]
 ```
 
 Compute the coefficient in Lean:
 
 ```wl
-LeanEvaluate[env["Nat.choose"], 10, 4]
+MathlibCall[session, "Nat.choose", 10, 4]
 ```
 
 Compute it independently in Wolfram Language:
@@ -34,12 +33,16 @@ Compute it independently in Wolfram Language:
 Binomial[10, 4]
 ```
 
-Compute rows and columns 0 through 31 modulo two and plot the parity pattern,
-with the row coordinate increasing upward. The integer array is retained for
-comparison:
+Compute rows and columns 0 through 31 modulo two:
 
 ```wl
-ArrayPlot[Reverse[pascal = LeanEvaluate[env, "(List.range 32).map (fun n => (List.range 32).map (fun k => Nat.choose n k % 2))"]], DataRange -> {{0, 31}, {0, 31}}, FrameTicks -> Automatic, FrameLabel -> {"Row n", "Column k"}]
+pascal = MathlibEvaluate[session, "(List.range 32).map (fun n => (List.range 32).map (fun k => Nat.choose n k % 2))"];
+```
+
+Plot the parity pattern with the row coordinate increasing upward:
+
+```wl
+ArrayPlot[Reverse[pascal], DataRange -> {{0, 31}, {0, 31}}, FrameTicks -> Automatic, FrameLabel -> {"Row n", "Column k"}]
 ```
 
 Check the entire finite array against the built-in binomial function:
@@ -54,11 +57,16 @@ a statement and proof with the appropriate quantifiers.
 
 ## Common divisors
 
-Compute and display the greatest common divisor of each pair of integers
-from 1 to 32:
+Compute the greatest common divisor of each pair of integers from 1 to 32:
 
 ```wl
-ArrayPlot[LeanEvaluate[env, "(List.range 32).map (fun n => (List.range 32).map (fun k => Nat.gcd (n + 1) (k + 1)))"], FrameTicks -> Automatic, FrameLabel -> {"First integer", "Second integer"}, PlotLegends -> Automatic]
+divisors = MathlibEvaluate[session, "(List.range 32).map (fun n => (List.range 32).map (fun k => Nat.gcd (n + 1) (k + 1)))"];
+```
+
+Display the exact values:
+
+```wl
+ArrayPlot[divisors, FrameTicks -> Automatic, FrameLabel -> {"First integer", "Second integer"}, PlotLegends -> Automatic]
 ```
 
 Large values occur at pairs sharing large divisors. The array is symmetric
@@ -66,16 +74,22 @@ because exchanging the two arguments preserves their greatest common divisor.
 Inspect the corresponding theorem:
 
 ```wl
-env["Nat.gcd_comm"]["TypeForm"]
+MathlibDeclaration[session, "Nat.gcd_comm"]["TypeForm"]
 ```
 
 ## Totients
 
 Euler's totient counts the integers from 1 through n that are coprime to n.
-Compute the values for n from 1 through 64 and plot the count:
+Compute the values for n from 1 through 64:
 
 ```wl
-ListPlot[totients = LeanEvaluate[env, "(List.range 64).map (fun n => Nat.totient (n + 1))"], DataRange -> {1, 64}, AxesLabel -> {"n", "Totient"}]
+totients = MathlibEvaluate[session, "(List.range 64).map (fun n => Nat.totient (n + 1))"];
+```
+
+Plot the count:
+
+```wl
+ListPlot[totients, DataRange -> {1, 64}, AxesLabel -> {"n", "Totient"}]
 ```
 
 Compare the exact list with Wolfram Language's totient function:
@@ -88,8 +102,8 @@ The data remain ordinary exact integers after transfer. Wolfram plotting and
 analysis functions can use them without converting theorem statements or
 Lean's typeclass machinery.
 
-Release the environment:
+Close the session:
 
 ```wl
-LeanFreeEnvironment[env]
+DeleteObject[session]
 ```

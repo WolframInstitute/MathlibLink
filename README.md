@@ -35,62 +35,54 @@ Setup reuses working Git, curl and elan installations. See
 [InstallMathlib](https://www.wolframcloud.com/obj/wolframinstitute/MathlibLink/#ref/InstallMathlib) for setup
 options and progress reporting.
 
-The environment interface below requires the accompanying LeanLink
-`feature/environment-evaluation` branch until its next release. Existing
-`StartMathlibSession`, `MathlibCall` and `ProveMathlib` calls remain supported.
-
-Load LeanLink:
-
-```wl
-Needs["Wolfram`LeanLink`"]
-```
-
 Import the binomial-coefficient module from the installed mathlib project:
 
 ```wl
-env = LeanImport["Mathlib.Data.Nat.Choose.Basic", "ProjectDir" -> MathlibInstallation[]["Directory"], "PrepareEvaluation" -> True]
+session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic"}]
 ```
 
 Apply an imported function:
 
 ```wl
-LeanEvaluate[env["Nat.choose"], 10, 4]
+MathlibCall[session, "Nat.choose", 10, 4]
 ```
 
 Evaluate a family of inputs in one call:
 
 ```wl
-LeanEvaluate[env, "(List.range 11).map (fun k => Nat.choose 10 k)"]
+MathlibEvaluate[session, "(List.range 11).map (fun k => Nat.choose 10 k)"]
 ```
 
-`"PrepareEvaluation" -> True` prepares the evaluator while importing modules.
-Later calls reuse it; `Needs` alone starts no Lean process.
-Batching inputs also reduces transfers between Wolfram Language and Lean.
+These calls work with the released LeanLink dependency. When LeanLink provides
+environment evaluation, MathlibLink prepares and reuses that evaluator
+automatically. `Needs` alone starts no Lean process. Batching inputs reduces
+transfers between Wolfram Language and Lean.
 
 Compile a theorem using the same imports:
 
 ```wl
-proofs = LeanImportString[env, "theorem addZero (n : Nat) : n + 0 = n := by rfl"]
+proof = ProveMathlib[session, "forall n : Nat, n + 0 = n", "by intro n; rfl"]
 ```
 
-Check its proof and axiom dependencies:
+Confirm that the proof passed kernel and axiom checks:
 
 ```wl
-LeanVerify[proofs["addZero"]]
+proof["Verified"]
 ```
 
-Release the environments when finished:
+Close the session when finished:
 
 ```wl
-Scan[LeanFreeEnvironment, {proofs, env}]
+DeleteObject[session]
 ```
 
 ## Coverage
 
-Use `LeanImport["Mathlib", "ProjectDir" -> directory]` for the full library,
-or select modules to reduce startup time and memory use. `Keys[env]` lists
-names; `env[name]` returns a Lean term whose type, definition and axioms can
-be inspected. No function whitelist or separate mathlib evaluator is needed.
+Use `StartMathlibSession[]` for the full library, or select modules to reduce
+startup time and memory use. `MathlibNames[session]` lists names;
+`MathlibDeclaration[session, name]` returns an object whose type, definition
+and axioms can be inspected. No function whitelist or separate mathlib
+evaluator is needed.
 
 Computable expressions can produce Wolfram values. Noncomputable definitions
 and proofs remain typed Lean terms. See [values and proofs](docs/en/Tutorials/ValuesAndProofs.md)
