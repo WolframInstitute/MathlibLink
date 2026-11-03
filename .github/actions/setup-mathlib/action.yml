@@ -10,6 +10,18 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Free unused hosted-runner tool cache
+      if: runner.environment == 'github-hosted' && runner.os == 'Linux'
+      shell: bash
+      run: |
+        # The job uses tools from the Wolfram container. GitHub mounts the
+        # host's unused language SDK cache at /__t; actions use /__e instead.
+        if [ -f /.dockerenv ] && [ -d /__t ]; then
+          du -sh /__t
+          rm -rf /__t/*
+        fi
+        df -h /
+
     - name: Require the hosted-runner entitlement
       shell: bash
       env:
