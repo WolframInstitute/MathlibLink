@@ -65,6 +65,7 @@ documentationIssues[file_String] := Module[{notebook, outputs, calls, failures, 
 	failures = DeleteDuplicates[Cases[outputs, HoldPattern[Failure[tag_, _Association]] :> tag, Infinity]];
 	(* These two pages intentionally demonstrate rejection of an admitted proof. *)
 	If[MemberQ[{"ProveMathlib.nb", "ValuesAndProofs.nb"}, FileNameTake[file]], failures = DeleteCases[failures, "MathlibUntrustedProof"]];
+	If[FileNameTake[file] === "ValuesAndProofs.nb", failures = DeleteCases[failures, "UntrustedProof"]];
 	If[FileNameTake[file] === "InstallMathlib.nb", failures = DeleteCases[failures, "MathlibInstallCancelled"]];
 	If[failures =!= {}, AssociateTo[issues, "Failures" -> failures]];
 	issues

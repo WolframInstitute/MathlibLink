@@ -3,6 +3,7 @@ Template: Paclet
 ResourceType: Paclet
 Name: WolframInstitute/MathlibLink
 Context: WolframInstitute`MathlibLink`
+ContextPath: [Wolfram`LeanLink`]
 Paclet: WolframInstitute/MathlibLink
 Description: Connect Wolfram Language to mathlib for typed mathematics and checked proofs
 ContributedBy: Wolfram Institute
@@ -24,32 +25,35 @@ Categories: [Mathematics]
 
 ## Usage
 
-[InstallMathlib]() prepares the runtime. [StartMathlibSession]() imports selected
-modules through LeanLink. Use [MathlibEvaluate]() for expressions,
-[MathlibCall]() for named functions and [ProveMathlib]() for checked proofs.
+[InstallMathlib]() prepares the runtime and [MathlibInstallation]() gives its
+project directory. Import that project with [LeanImport](paclet:Wolfram/LeanLink/ref/LeanImport),
+evaluate with [LeanEvaluate](paclet:Wolfram/LeanLink/ref/LeanEvaluate) and verify
+theorems with [LeanVerify](paclet:Wolfram/LeanLink/ref/LeanVerify).
+Setup checks for the latest published LeanLink on every run.
+Existing MathlibLink session APIs remain supported.
 
 ## Basic Examples
 
 Import a focused mathlib module:
 
 ```wl
-session = StartMathlibSession["Imports" -> {"Mathlib.Data.Nat.Choose.Basic"}]
+env = LeanImport["Mathlib.Data.Nat.Choose.Basic", "ProjectDir" -> MathlibInstallation[]["Directory"]]
 ```
 
 Compute an exact binomial coefficient:
 
 ```wl
-MathlibCall[session, "Nat.choose", 10, 4]
+LeanEvaluate[env["Nat.choose"], 10, 4]
 ```
 
 Read a theorem's type:
 
 ```wl
-MathlibDeclaration[session, "Nat.add_comm"]["TypeForm"]
+env["Nat.add_comm"]["TypeForm"]
 ```
 
-Close the session:
+Release the environment:
 
 ```wl
-DeleteObject[session]
+LeanFreeEnvironment[env]
 ```
