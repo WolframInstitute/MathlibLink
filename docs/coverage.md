@@ -136,3 +136,27 @@ Source hashes, actual outputs, notebook audits, renders and memory samples are
 retained under ignored `build/`. The [CI workflow](workflows.md) checks the
 native Lean runtime on all three platforms and the Wolfram interface and
 installed release archive in Linux.
+
+## In-process evaluation
+
+On 3 November 2026, LeanLink `ca51dbd` passed 69 local MathlibLink checks and
+34 live checks covering the full namespace, values, isolated evaluation,
+proof rejection, retained objects, session cleanup and timeouts on macOS ARM64.
+The tests request isolation explicitly when checking worker cleanup. Timeout
+tests use a bounded counting loop without large allocations or deep recursion.
+
+The full-default proof phase was stopped when its monitored physical footprint
+passed 14 GiB, with both `ca51dbd` and the preceding `c5a5ad6`. That phase remains
+unverified in this run. The same proof passed with
+`Mathlib.Data.Nat.Choose.Basic` imported, using a peak physical footprint of
+4.67 GiB. Each phase ran in a fresh kernel. Linux and Windows were not tested
+in this local comparison.
+
+For `Nat.choose 50 25`, six fresh kernels per version measured first evaluations
+of 794 ms before and 25.9 ms after the LeanLink change. Subsequent-call medians
+were 8.81 ms and 0.913 ms. MathlibLink calls using prepared sessions improved
+from 9.00 ms to 0.945 ms. Each run checked the exact result
+`126410606437752`; timings exclude package loading and downloads. Measurements
+used Wolfram Language 15.0, Lean 4.35.0 and an Apple M4 Max with 36 GB RAM.
+Raw timings, source revisions and scripts are retained under ignored build
+directories in the LeanLink and MathlibLink checkouts.

@@ -25,11 +25,13 @@ RelatedTutorials: [GettingStarted, ArithmeticPatterns]
 - Noncomputable results can be retained with "ReturnType" -> "Object".
 - Approximate Wolfram values and unsupported symbolic expressions are not silently converted.
 - The time limit for retained-object elaboration is best effort while native Lean code is running.
+- "Isolated" -> True uses a separate Lean process for copied values. For timeout and crash behavior, see [MathlibEvaluate]().
 
 | | | |
 | --- | --- | --- |
 | TimeConstraint | 120 | time limit in seconds |
 | "ReturnType" | Automatic | copied value or retained "Object" |
+| "Isolated" | False | evaluate copied values in a separate Lean process |
 
 ## Basic Examples
 
@@ -79,6 +81,14 @@ Close the session:
 
 ```wl
 DeleteObject[session]
+```
+
+### Isolated
+
+Run a function in a separate Lean process:
+
+```wl
+WithCleanup[session = StartMathlibSession["Imports" -> {"Init"}], MathlibCall[session, "Nat.gcd", 84, 30, "Isolated" -> True], DeleteObject[session]]
 ```
 
 ### TimeConstraint

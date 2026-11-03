@@ -5,11 +5,13 @@ modules with LeanImport, inspects LeanTerms, evaluates with LeanEvaluate and
 checks theorems with LeanVerify. MathlibLink adds no separate evaluator or
 function whitelist. It remains independent of applications that use it.
 
-LeanLink owns imported environments and their evaluation processes. A worker
-starts on the first evaluation, or during import with "PrepareEvaluation" -> True.
-Compatibility sessions enable this option for new imports when available.
-Later calls reuse that worker. Each request starts from the same imported environment, so temporary
-source declarations and errors do not affect subsequent requests. Computed
+LeanLink owns imported environments and their evaluators. Environment evaluation
+runs in the native shim; "PrepareEvaluation" -> True prepares its command state
+during import. Compatibility sessions enable this option for new imports when
+available. "Isolated" -> True evaluates copied values in a separate Lean process.
+Earlier LeanLink versions always use a separate process. Each request starts
+from the same imported environment, so temporary source declarations and errors
+do not affect subsequent requests. Computed
 values are not cached. Exact supported values cross the interface as JSON;
 noncomputable definitions and proofs remain LeanTerms.
 
@@ -72,7 +74,12 @@ PacletPage is the sole documentation and archive pipeline; publishing is a
 separate explicit action.
 
 Compatibility-session timeouts and interruptions close the owning session,
-including retained expressions and proofs. LeanEvaluate bounds its subprocess.
+including retained expressions and proofs. In-process evaluation returns at its
+time limit, but compiled code can continue running; a native crash can terminate
+the Wolfram kernel. Isolated evaluation kills its worker on timeout or abort,
+protecting the kernel from those failures. It is not a sandbox for untrusted
+code. Retained objects and proof checks still use native environments;
+"Isolated" -> True is rejected with "ReturnType" -> "Object".
 TimeConstrained around LeanLink elaboration and native kernel checking is a
 best-effort bound: an uninterruptible native call can return after the deadline.
 A timeout is an incomplete check and never a successful proof.

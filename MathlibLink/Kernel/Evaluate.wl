@@ -6,7 +6,7 @@ MathlibCall::usage = "MathlibCall[session, name, args] applies an available Lean
 MathlibExpression::usage = "MathlibExpression[source] supplies an explicit Lean expression as a structured call argument."
 ProveMathlib::usage = "ProveMathlib[session, statement, proof] elaborates a Lean theorem and returns a kernel-checked object if its axiom dependencies are standard."
 
-Options[MathlibEvaluate] = {TimeConstraint -> 120, "ReturnType" -> Automatic}
+Options[MathlibEvaluate] = {TimeConstraint -> 120, "ReturnType" -> Automatic, "Isolated" -> False}
 Options[MathlibCall] = Options[MathlibEvaluate]
 Options[ProveMathlib] = {TimeConstraint -> 120}
 
@@ -86,17 +86,21 @@ retainExpression[session_MathlibSession, state_Association, expression_String, t
 	result
 ]
 
-MathlibEvaluate[session_MathlibSession, expression_String, opts : OptionsPattern[]] := Module[{state, time, mode, result},
+MathlibEvaluate[session_MathlibSession, expression_String, opts : OptionsPattern[]] := Module[{state, time, mode, isolated, evaluationOptions, result},
 	If[! mathlibOptionsQ[MathlibEvaluate, {opts}], Return[mathlibFailure["MathlibInvalidOption", "Unknown evaluation option."]]];
-	{time, mode} = {OptionValue[TimeConstraint], OptionValue["ReturnType"]};
+	{time, mode, isolated} = {OptionValue[TimeConstraint], OptionValue["ReturnType"], OptionValue["Isolated"]};
 	If[! mathlibTimeQ[time] || ! MemberQ[{Automatic, "Object"}, mode], Return[mathlibFailure["MathlibInvalidOption", "Use a positive TimeConstraint and ReturnType Automatic or Object."]]];
+	If[! BooleanQ[isolated], Return[mathlibFailure["MathlibInvalidOption", "Isolated must be True or False."]]];
+	If[isolated && mode === "Object", Return[mathlibFailure["MathlibInvalidOption", "Isolated evaluation returns copied values; use ReturnType Automatic."]]];
 	state = mathlibSessionData[session];
 	If[FailureQ[state], Return[state]];
 	If[mode === "Object", Return[retainExpression[session, state, expression, time]]];
+	(* Earlier LeanLink versions always evaluate in a separate process. *)
+	evaluationOptions = FilterRules[{"Isolated" -> isolated}, Options[Symbol["Wolfram`LeanLink`LeanEvaluate"]]];
 	result = CheckAbort[
 		If[mathlibDirectLeanQ[],
-			mathlibInvoke["LeanEvaluate", state["Environment"], expression, "TimeLimit" -> time],
-			mathlibInvoke["LeanEvaluate", expression, "ProjectDir" -> state["Directory"], "Imports" -> state["Imports"], "TimeLimit" -> time]
+			mathlibInvoke["LeanEvaluate", state["Environment"], expression, "TimeLimit" -> time, Sequence @@ evaluationOptions],
+			mathlibInvoke["LeanEvaluate", expression, "ProjectDir" -> state["Directory"], "Imports" -> state["Imports"], "TimeLimit" -> time, Sequence @@ evaluationOptions]
 		],
 		mathlibCloseSession[session]; Abort[]
 	];

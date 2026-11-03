@@ -22,12 +22,15 @@ RelatedTutorials: [ArithmeticPatterns, ValuesAndProofs, PartialComputations]
 - "ReturnType" -> "Object" keeps a typed Lean expression as a [MathlibObject](). It also supports noncomputable definitions.
 - Runtime evaluation is not a proof. Use [ProveMathlib]() for a checked theorem.
 - Evaluation failures and time limits give [Failure]().
+- "Isolated" -> True evaluates copied values in a separate Lean process, which is stopped on timeout or abort. It cannot be combined with "ReturnType" -> "Object".
+- With "Isolated" -> False, compiled Lean code may continue after a timeout, and a native crash can terminate the Wolfram kernel. Isolation protects the kernel from such failures; it is not a sandbox.
 - The time limit for retained-object elaboration is best effort while native Lean code is running.
 
 | | | |
 | --- | --- | --- |
 | TimeConstraint | 120 | time limit in seconds |
 | "ReturnType" | Automatic | copied value or retained "Object" |
+| "Isolated" | False | evaluate copied values in a separate Lean process |
 
 ## Basic Examples
 
@@ -71,6 +74,14 @@ Close the session:
 
 ```wl
 DeleteObject[session]
+```
+
+### Isolated
+
+Evaluate in a separate Lean process:
+
+```wl
+WithCleanup[session = StartMathlibSession["Imports" -> {"Init"}], MathlibEvaluate[session, "(2 : Nat) ^ 100", "Isolated" -> True], DeleteObject[session]]
 ```
 
 ### TimeConstraint
