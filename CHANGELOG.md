@@ -3,6 +3,7 @@
 ## 0.1.1
 
 - Use LeanLink's environment evaluator and proof checks when available, while preserving compatibility with released LeanLink.
+- Support LeanLink's in-process evaluator and add `"Isolated" -> True` to `MathlibEvaluate` and `MathlibCall` for evaluation in a separate process.
 - Prepare evaluation during module imports and share expression and proof cleanup.
 - Show expandable notebook summaries for sessions, declarations, values and expressions.
 - Read available installation output without unnecessary waits.
