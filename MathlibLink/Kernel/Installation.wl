@@ -45,8 +45,13 @@ mathlibInstallRun[arguments_List, directory_String, extraEnvironment_Association
 			out = out <> newOut;
 			err = err <> newErr;
 			If[newOut === "" && newErr === "",
-				(* Output may remain buffered after the process exits. *)
-				If[ProcessStatus[process] =!= "Running", Break[]];
+				(* The child can write and exit after the reads above. Drain
+				   again after observing its exit, before accepting the result. *)
+				If[ProcessStatus[process] =!= "Running",
+					out = out <> read[stdout];
+					err = err <> read[stderr];
+					Break[]
+				];
 				Pause[0.1]
 			]
 		];

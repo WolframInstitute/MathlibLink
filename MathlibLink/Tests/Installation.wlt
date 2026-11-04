@@ -132,6 +132,23 @@ VerificationTest[
 	], "LeanLinkRestartRequired", TestID -> "loaded-native-library-is-not-reused-after-update"
 ]
 
+(* A fast command can write both pipes and exit between an empty read and
+   the status check. Its final bytes must still reach the caller. *)
+VerificationTest[
+	Module[{finished = False, reads = 0, remaining = <|"StandardOutput" -> "git version fixture\n", "StandardError" -> "last error\n"|>},
+		Block[{
+			WolframInstitute`MathlibLink`PackageScope`mathlibEnvironment = (<||> &),
+			StartProcess = (ProcessObject[<|"Fixture" -> True|>] &),
+			ProcessConnection = Function[{process, name}, name],
+			ProcessStatus = Function[process, If[reads >= 2, finished = True]; If[finished, "Finished", "Running"]],
+			ProcessInformation = (0 &), Pause = (Null &), KillProcess = (Throw["Unexpected kill"] &),
+			ReadString = Function[{stream, terminator}, reads++;
+				If[finished, With[{text = remaining[stream]}, AssociateTo[remaining, stream -> ""]; text], ""]]
+		}, WolframInstitute`MathlibLink`PackageScope`mathlibInstallRun[{"fixture"}, Directory[]]]
+	], <|"ExitCode" -> 0, "StandardOutput" -> "git version fixture\n", "StandardError" -> "last error\n"|>,
+	TestID -> "installer-collects-output-written-while-process-exits"
+]
+
 (* kill -0 also succeeds for a dead Linux zombie awaiting its parent's wait.
    Inspect /proc on Linux; unknown or live states must still fail cleanup. *)
 installerProcessState[pid_String] := Module[{file, status, states, result},
